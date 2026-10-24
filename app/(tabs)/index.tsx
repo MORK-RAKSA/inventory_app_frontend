@@ -1,22 +1,36 @@
-import {Text,View} from 'react-native';
+import {useEffect,useState,ReactNode} from 'react';
+import {Text,View,StyleProp,ViewStyle} from 'react-native';
 import {useRouter} from 'expo-router';
-import {ArrowUpRight,Boxes,TrendingUp,Plus,ScanLine,ChartNoAxesCombined,ShoppingBag,PackageCheck,Layers,AlertTriangle,Clock,PackageX,ChevronRight} from 'lucide-react-native';
+import {ArrowUpRight,Boxes,TrendingUp,Plus,ScanLine,ChartNoAxesCombined,Warehouse,PackageCheck,Layers,AlertTriangle,Clock,PackageX,ChevronRight,Bell} from 'lucide-react-native';
 import {useLiveData} from '../../src/hooks/useLiveData';
 import {getUsername} from '../../src/auth';
 import {AnimatedNumber} from '../../src/components/AnimatedNumber';
 import {useLanguage} from '../../src/i18n';
+import {getUnreadCount,subscribeLiveActivity} from '../../src/liveSync';
 import {Press,Rise} from '../../src/motion';
 import {Screen,Card,GradientCard,IconBadge,C,Heading,Pill,money,khr,ErrorLine} from '../../src/ui';
 import type {Sale} from '../../src/api';
 
+/**
+ * Only the first two blocks animate in. Entering animations on every card are what made the
+ * overview stutter on Android, so everything below the fold is a plain View.
+ */
+function Soft({index = 0,children,style}:{index?:number;children:ReactNode;style?:StyleProp<ViewStyle>}) {
+  return index < 2 ? <Rise index={index} style={style}>{children}</Rise> : <View style={style}>{children}</View>;
+}
+
 export default function Dashboard() {
   const username = getUsername();
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const greetingText = `${greeting}, ${username}!`;
   const router = useRouter();
   const {products:ps,sales:ss,rate,error,loading,refresh} = useLiveData('all');
   const {t,tr} = useLanguage();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? tr('Good morning','អរុណសួស្តី') : hour < 18 ? tr('Good afternoon','ទិវាសួស្តី') : tr('Good evening','សាយណ្ហសួស្តី');
+  const [unread,setUnread] = useState(getUnreadCount());
+  useEffect(() => {
+    setUnread(getUnreadCount());
+    return subscribeLiveActivity(() => setUnread(getUnreadCount()));
+  }, []);
 
   const today = new Date().toDateString();
   const daily = ss.filter(s => new Date(s.createdAt).toDateString() === today);
@@ -34,18 +48,43 @@ export default function Dashboard() {
   const comparison = sum(previous7)>0 ? (sum(last7)-sum(previous7))/sum(previous7)*100 : null;
   const topProducts = ps.slice().sort((a,b) => a.stock-b.stock).slice(0,3);
   const quick = [
-    {label: tr('Add items','បន្ថែមទំនិញ'), Icon: Plus, to: '/inventory'},
-    {label: tr('Scan & sell','ស្កេន / ទូទាត់'), Icon: ScanLine, to: '/checkout'},
-    {label: tr('View sales','មើលការលក់'), Icon: ChartNoAxesCombined, to: '/sales'},
+    {label: tr('Sell retail','លក់រាយ'), Icon: ScanLine, to: '/checkout?tier=retail', solid: true},
+    {label: tr('Sell wholesale','លក់ដុំ'), Icon: Warehouse, to: '/checkout?tier=wholesale', solid: false},
+    {label: tr('Add item','បន្ថែមទំនិញ'), Icon: Plus, to: '/inventory?add=1', solid: false},
+    {label: tr('Sales','ការលក់'), Icon: ChartNoAxesCombined, to: '/sales', solid: false},
   ];
 
   return (
     <Screen onRefresh={refresh}
-      title={t('home')}
-      subtitle={`${greetingText} ${t('overviewSubtitle')}`}
-      right={<Press onPress={() => router.push('/notifications' as any)} accessibilityLabel="Notifications"><IconBadge icon={ShoppingBag} size={40} /></Press>}
+      title={greeting}
+      subtitle={`${username || 'EasySell'} · ${tr('Here is your store today','នេះគឺជាស្ថានភាពហាងរបស់អ្នកថ្ងៃនេះ')}`}
+      right={
+        <Press onPress={() => router.push('/notifications' as any)} accessibilityLabel="Notifications" scale={0.92}>
+          <View>
+            <IconBadge icon={Bell} size={42} />
+            {unread > 0 && (
+              <View style={{position: 'absolute', top: -5, right: -5, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: C.red, borderWidth: 2, borderColor: C.bg, alignItems: 'center', justifyContent: 'center'}}>
+                <Text style={{color: '#fff', fontSize: 10.5, fontWeight: '800'}}>{unread > 99 ? '99+' : unread}</Text>
+              </View>
+            )}
+          </View>
+        </Press>
+      }
     >
-      <Rise index={2}>
+      {/* Quick actions sit right under the greeting so they are one tap away. */}
+      <Soft index={1}>
+        <View style={{flexDirection: 'row', gap: 10, marginBottom: 16}}>
+          {quick.map(x => (
+            <Press key={x.to} onPress={() => router.push(x.to as any)} accessibilityLabel={x.label} scale={0.95}
+              style={{flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, backgroundColor: x.solid ? C.primary : C.surface, borderRadius: 18, elevation: 2, shadowColor: '#3B2A7A', shadowOpacity: 0.07, shadowRadius: 8, shadowOffset: {width: 0, height: 3}}}>
+              <IconBadge icon={x.Icon} size={40} tone={x.solid ? 'solid' : 'primary'} />
+              <Text numberOfLines={2} style={{fontSize: 11.5, fontWeight: '800', color: x.solid ? '#fff' : C.text, textAlign: 'center', marginTop: 8}}>{x.label}</Text>
+            </Press>
+          ))}
+        </View>
+      </Soft>
+
+      <Soft index={1}>
         <GradientCard>
           <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
             <Text style={{color: C.onPrimaryMuted, fontSize: 13, fontWeight: '600'}}>{tr("Today's sales",'ការលក់ថ្ងៃនេះ')}</Text>
@@ -59,9 +98,9 @@ export default function Dashboard() {
             <Text style={{color: '#fff', fontSize: 12.5, fontWeight: '800'}}>{daily.length}</Text>
           </View>
         </GradientCard>
-      </Rise>
+      </Soft>
 
-      <Rise index={3} style={{flexDirection: 'row', gap: 12}}>
+      <Soft index={3} style={{flexDirection: 'row', gap: 12}}>
         <Card style={{flex: 1}}>
           <IconBadge icon={TrendingUp} size={38} />
           <Text style={{color: C.muted, fontSize: 12, marginTop: 14}}>{tr('Last 7 days','៧ ថ្ងៃចុងក្រោយ')}</Text>
@@ -74,9 +113,9 @@ export default function Dashboard() {
           <Text style={{fontWeight: '800', fontSize: 21, color: C.text, marginTop: 3}}>{units.toLocaleString('en-US')}</Text>
           <Text style={{color: C.muted, fontSize: 11.5, marginTop: 3}}>{ps.length} {tr('products','ទំនិញ')}</Text>
         </Card>
-      </Rise>
+      </Soft>
 
-      <Card index={4}>
+      <Card>
         <Text style={{color: C.muted, fontSize: 12.5}}>{tr('Potential inventory value','តម្លៃលក់ស្តុកសរុប')}</Text>
         <Text style={{color: C.text, fontSize: 26, fontWeight: '800', marginTop: 6, letterSpacing: -0.5}}>{khr(retail * rate)}</Text>
         <Text style={{color: C.muted, marginTop: 3, fontSize: 12.5}}>{money(retail)}</Text>
@@ -90,19 +129,8 @@ export default function Dashboard() {
         </View>
         <Text style={{color:C.muted,fontSize:12,marginTop:6}}>{tr('Compared with previous 7 days','ធៀបនឹង៧ថ្ងៃមុន')} · {tr('Last sync on screen focus / every 5 sec','ធ្វើបច្ចុប្បន្នភាពដោយស្វ័យប្រវត្តិ')}</Text>
       </Card>
-      <Rise index={5}>
-        <Heading>{tr('Quick actions','សកម្មភាពរហ័ស')}</Heading>
-        <View style={{flexDirection: 'row', gap: 10, marginBottom: 12}}>
-          {quick.map(x => (
-            <Press key={x.to} onPress={() => router.push(x.to as any)} style={{flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 6, backgroundColor: C.surface, borderRadius: 18, shadowColor: '#3B2A7A', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: {width: 0, height: 4}, elevation: 2}}>
-              <IconBadge icon={x.Icon} size={42} />
-              <Text style={{fontSize: 11.5, fontWeight: '700', color: C.text, textAlign: 'center', marginTop: 10}}>{x.label}</Text>
-            </Press>
-          ))}
-        </View>
-      </Rise>
 
-      <Rise index={6}>
+      <Soft index={6}>
         <Heading action={tr('View all','មើលទាំងអស់')} onPress={() => router.push('/inventory?low=1' as any)}>{tr('Low stock','ស្តុកជិតអស់')}</Heading>
         <Card>
           {low.length === 0 ? (
@@ -120,9 +148,9 @@ export default function Dashboard() {
             </View>
           ))}
         </Card>
-      </Rise>
+      </Soft>
 
-      <Rise index={7}>
+      <Soft index={7}>
         <Heading action={tr('View all','មើលទាំងអស់')} onPress={() => router.push('/inventory?expiry=1' as any)}>{tr('Important alerts','ការជូនដំណឹងសំខាន់')}</Heading>
 
         {/* Alert summary cards */}
@@ -188,8 +216,8 @@ export default function Dashboard() {
             </View>
           </Card>
         )}
-      </Rise>
-      <Rise index={8}>
+      </Soft>
+      <Soft index={8}>
         <Heading>{tr('Stock by category','ស្តុកតាមប្រភេទ')}</Heading>
         <Card>
           {categories.length === 0 ? (
@@ -208,7 +236,7 @@ export default function Dashboard() {
             );
           })}
         </Card>
-      </Rise>
+      </Soft>
       {loading && !ps.length && !ss.length && <Card><Text style={{color:C.muted}}>Loading overview…</Text><View style={{height:14,backgroundColor:C.pale,borderRadius:8,marginTop:12}}/><View style={{height:14,width:'70%',backgroundColor:C.pale,borderRadius:8,marginTop:8}}/></Card>}
       <ErrorLine message={error} />
     </Screen>

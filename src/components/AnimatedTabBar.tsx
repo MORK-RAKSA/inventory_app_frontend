@@ -244,8 +244,17 @@ export function AnimatedTabBar({
     ],
   }));
 
-  // Slide the bar away while the keyboard is open so it never covers inputs.
-  const hide = useSharedValue(0);
+  // Slide the bar away while keyboard is open or when checkout POS screen is active,
+  // giving the dedicated fixed POS checkout footer full bottom area.
+  const hide = useSharedValue(centerActive ? 1 : 0);
+  useEffect(() => {
+    if (centerActive) {
+      hide.value = withTiming(1, { duration: 240, easing: easeInOut });
+    } else {
+      hide.value = withTiming(0, { duration: 240, easing: easeInOut });
+    }
+  }, [centerActive]);
+
   useEffect(() => {
     const show = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
@@ -256,14 +265,16 @@ export function AnimatedTabBar({
     const off = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => {
-        hide.value = withTiming(0, { duration: 200 });
+        if (!centerActive) {
+          hide.value = withTiming(0, { duration: 200 });
+        }
       },
     );
     return () => {
       show.remove();
       off.remove();
     };
-  }, []);
+  }, [centerActive]);
   const wrap = useAnimatedStyle(() => ({
     opacity: 1 - hide.value,
     transform: [

@@ -14,8 +14,12 @@ import {
 import { api, BatchResult, Product } from "../src/api";
 import { useLiveData } from "../src/hooks/useLiveData";
 import { useSounds } from "../src/hooks/useSounds";
-import { CameraScanner } from "../src/components/CameraScanner";
-import { lookupBarcodeOnline } from "../src/barcodeLookup";
+import { CameraScanner, ScanResult } from "../src/components/CameraScanner";
+import {
+  lookupBarcodeOnline,
+  buildSmartBarcodeName,
+  rememberBarcodeInfo,
+} from "../src/barcodeLookup";
 import { SwipeActions } from "../src/components/SwipeActions";
 import { CategorySelect } from "../src/components/CategorySelect";
 import {
@@ -79,10 +83,12 @@ export default function Batch() {
   useEffect(() => setRaw({}), [draft?.key]);
   const cats = [...new Set(products.map((p) => p.category))];
 
-  function foundCode(raw: string, qty = 1) {
+  async function foundCode(raw: string, qty = 1): Promise<ScanResult> {
     const code = raw.trim();
-    if (!code) return;
-    const p = products.find((x) => x.barcode === code);
+    if (!code) return false;
+    const p = products.find(
+      (x) => String(x.barcode || "").toLowerCase() === code.toLowerCase()
+    );
     if (p) {
       playScan();
       setPending((prev) => {
@@ -105,8 +111,13 @@ export default function Batch() {
               },
             ];
       });
+      return {
+        ok: true,
+        label: `${p.name} (+${qty})`,
+      };
     } else {
       playScan();
+      const fallback = buildSmartBarcodeName(code);
       setPending((prev) =>
         prev.some((x) => x.barcode === code)
           ? prev.map((x) =>
@@ -116,20 +127,21 @@ export default function Batch() {
               ...prev,
               {
                 key: `new-${Date.now()}-${code}`,
-                name: "",
+                name: fallback.name,
                 barcode: code,
-                category: "General",
+                category: fallback.category || "General",
                 quantity: qty,
-                priceUsd: 0,
+                priceUsd: Number((4100 / rate).toFixed(4)),
                 lowStockThreshold: 5,
               },
             ],
       );
-      void lookupBarcodeOnline(code).then((info) => {
-        if (!info) return;
+      const info = await lookupBarcodeOnline(code, { allowFallback: true });
+      if (info && info.name) {
         setPending((prev) =>
           prev.map((x) =>
-            x.barcode === code && !x.name.trim()
+            x.barcode === code &&
+            (!x.name.trim() || x.name === fallback.name)
               ? {
                   ...x,
                   name: info.name,
@@ -138,7 +150,22 @@ export default function Batch() {
               : x,
           ),
         );
-      });
+        setDraft((prev) =>
+          prev &&
+          prev.barcode === code &&
+          (!prev.name.trim() || prev.name === fallback.name)
+            ? {
+                ...prev,
+                name: info.name,
+                category: info.category || prev.category,
+              }
+            : prev,
+        );
+      }
+      return {
+        ok: true,
+        label: `${info?.name || fallback.name} (+${qty})`,
+      };
     }
   }
   function addManual() {

@@ -2,7 +2,7 @@ import {useCallback,useEffect,useState} from 'react';
 import {Text,View} from 'react-native';
 import Animated,{FadeIn,FadeOut} from 'react-native-reanimated';
 import {useFocusEffect} from 'expo-router';
-import {ArrowLeftRight,ShieldCheck,Globe2,Info,CheckCircle2} from 'lucide-react-native';
+import {ArrowLeftRight,ShieldCheck,Globe2,Info,CheckCircle2,ScanLine,Radio,Smartphone} from 'lucide-react-native';
 import {api,Settings} from '../../src/api';
 import {logout} from '../../src/auth';
 import {showSignedOut} from '../../src/authEvents';
@@ -10,6 +10,7 @@ import {Pressable} from 'react-native';
 import {useLanguage} from '../../src/i18n';
 import {Segmented,Rise} from '../../src/motion';
 import {Screen,Card,Btn,C,Field,Heading,ErrorLine,IconBadge} from '../../src/ui';
+import {MobileScannerGunModal} from '../../src/components/MobileScannerGunModal';
 
 export default function SettingsPage() {
   const {language,setLanguage,t,tr} = useLanguage();
@@ -17,6 +18,7 @@ export default function SettingsPage() {
   const [err,setErr] = useState('');
   const [message,setMessage] = useState('');
   const [saving,setSaving] = useState(false);
+  const [scannerGunOpen, setScannerGunOpen] = useState(false);
 
   useFocusEffect(useCallback(() => {
     void api<Settings>('/settings').then(v => setRate(String(v.usdToKhr))).catch(e => setErr(String(e)));
@@ -57,6 +59,29 @@ export default function SettingsPage() {
       </Card>
 
       <Rise index={3}>
+        <Card>
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12}}>
+            <IconBadge icon={ScanLine} size={44} />
+            <View style={{flex: 1}}>
+              <Text style={{color: C.text, fontWeight: '800', fontSize: 16}}>
+                {tr('Mobile Scanner Gun', 'ម៉ាស៊ីនស្កេនបាកូដឥតខ្សែ')}
+              </Text>
+              <Text style={{color: C.muted, fontSize: 12.5, marginTop: 2}}>
+                {tr('Beam barcodes to Web Portal POS & Ledger', 'បញ្ជូនបាកូដផ្ទាល់ទៅកាន់ Web Portal')}
+              </Text>
+            </View>
+          </View>
+          <Text style={{color: C.muted, fontSize: 13, lineHeight: 19, marginBottom: 16}}>
+            {tr(
+              'Turn this phone into a handheld wireless scanner gun. Scanned barcodes beam instantly to the Web Portal POS or Inventory batch in real time!',
+              'ប្រែក្លាយទូរស័ព្ទនេះទៅជាម៉ាស៊ីនស្កេនឥតខ្សែ។ រាល់ការស្កេននឹងបញ្ជូនទៅកាន់ POS ឬស្តុកលើ Web Portal ភ្លាមៗ!'
+            )}
+          </Text>
+          <Btn onPress={() => setScannerGunOpen(true)}>
+            {tr('Launch Scanner Gun', 'បើកម៉ាស៊ីនស្កេនឥតខ្សែ')}
+          </Btn>
+        </Card>
+
         <View style={{backgroundColor: C.pale, borderRadius: 20, padding: 18, marginBottom: 14, flexDirection: 'row', gap: 12}}>
           <ShieldCheck size={20} color={C.primary} />
           <View style={{flex: 1}}>
@@ -92,6 +117,7 @@ export default function SettingsPage() {
         </Card>
       </Rise>
       <ErrorLine message={err} />
+      <MobileScannerGunModal visible={scannerGunOpen} onClose={() => setScannerGunOpen(false)} />
     </Screen>
   );
 }

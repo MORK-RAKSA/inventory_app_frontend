@@ -10,8 +10,13 @@ export function CategorySelect({value,categories,onChange}:{value:string;categor
   const [open,setOpen] = useState(false);
   const [search,setSearch] = useState('');
   const {t,tr} = useLanguage();
-  const q = search.trim();
-  const choices = categories.filter(c => c.toLowerCase().includes(q.toLowerCase()));
+  const q = search.trim().toLowerCase();
+  const uniqueCategories = Array.from(
+    new Set((categories || []).map((c) => String(c).trim()).filter(Boolean))
+  );
+  const choices = uniqueCategories.filter((c) =>
+    c.toLowerCase().includes(q)
+  );
   const close = () => setOpen(false);
   return (
     <>
@@ -34,8 +39,8 @@ export function CategorySelect({value,categories,onChange}:{value:string;categor
               {q && !categories.some(c=>c.toLowerCase()===q.toLowerCase()) ? <Press accessibilityLabel="Add category" onPress={()=>{onChange(q);close();}} style={{width:46,height:48,borderRadius:13,backgroundColor:C.primary,alignItems:'center',justifyContent:'center'}}><Plus color="white" size={22}/></Press> : null}
             </View>
             <ScrollView keyboardShouldPersistTaps="handled" style={{marginBottom: 8}}>
-              {choices.map(c => (
-                <Press key={c} scale={0.985} onPress={() => {onChange(c); close();}}
+              {choices.map((c, i) => (
+                <Press key={`${c}-${i}`} scale={0.985} onPress={() => {onChange(c); close();}}
                   style={{paddingVertical: 15, paddingHorizontal: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: C.border}}>
                   <Text style={{color: C.text, fontSize: 15, fontWeight: c === value ? '800' : '500'}}>{c}</Text>
                   {c === value ? <Check size={18} color={C.primary} /> : null}

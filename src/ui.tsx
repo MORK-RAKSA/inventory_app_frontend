@@ -137,9 +137,9 @@ export function Pill({children,tone = 'green'}:{children:React.ReactNode;tone?:'
   );
 }
 
-export function Field({placeholder,value,onChangeText,keyboardType = 'default',style,label,icon:Icon,right,autoFocus}:{
+export function Field({placeholder,value,onChangeText,keyboardType = 'default',style,label,icon:Icon,prefix,right,autoFocus}:{
   placeholder:string;value:string;onChangeText:(v:string)=>void;keyboardType?:KeyboardTypeOptions;style?:StyleProp<ViewStyle>;
-  label?:string;icon?:IconType;right?:React.ReactNode;autoFocus?:boolean;
+  label?:string;icon?:IconType;prefix?:string;right?:React.ReactNode;autoFocus?:boolean;
 }) {
   const focus = useSharedValue(0);
   const box = useAnimatedStyle(() => ({
@@ -150,10 +150,14 @@ export function Field({placeholder,value,onChangeText,keyboardType = 'default',s
     <View style={[{marginBottom: 14}, style]}>
       {label ? <Text style={{color: C.muted, fontSize: 12, fontWeight: '700', marginBottom: 7}}>{label}</Text> : null}
       <Animated.View style={[{flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: R.md, paddingHorizontal: 14, height: 50, gap: 10}, box]}>
-        {Icon ? <Icon size={18} color={C.muted} /> : null}
+        {prefix ? (
+          <Text style={{fontSize: 16, fontWeight: '800', color: C.primary, minWidth: 16}}>{prefix}</Text>
+        ) : Icon ? (
+          <Icon size={18} color="#9CA3AF" />
+        ) : null}
         <TextInput
           placeholder={placeholder}
-          placeholderTextColor={C.faint}
+          placeholderTextColor="#9CA3AF"
           value={value}
           onChangeText={onChangeText}
           keyboardType={keyboardType}

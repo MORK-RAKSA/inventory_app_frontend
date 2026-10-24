@@ -4,7 +4,7 @@ import Animated,{FadeIn,FadeOut} from 'react-native-reanimated';
 import {ReceiptText,CalendarDays,ChevronRight,Download,Search} from 'lucide-react-native';
 import {Sale} from '../../src/api';
 import {exportExcel} from '../../src/exportExcel';
-import {DateInput} from '../../src/components/DateInput';
+import {DateRangeFilterButton} from '../../src/components/CalendarPickerModal';
 import {Press as Tap} from '../../src/motion';
 import {useLiveData} from '../../src/hooks/useLiveData';
 import {ReceiptModal} from '../../src/components/ReceiptModal';
@@ -66,7 +66,32 @@ export default function Sales() {
         <Search size={18} color={C.muted}/>
         <TextInput accessibilityLabel="Search transaction ID" placeholder="Search transaction ID" value={searchId} onChangeText={setSearchId} autoCapitalize="none" style={{flex:1,height:48,color:C.text}}/>
       </View>
-      <View style={{flexDirection:'row',gap:10}}><DateInput label="From date" value={fromDate} onChange={setFromDate}/><DateInput label="To date" value={toDate} onChange={setToDate}/></View>
+      <View style={{marginBottom:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+        <DateRangeFilterButton
+          label={tr('Filter by Date','ចម្រាញ់តាមកាលបរិច្ឆេទ')}
+          startDate={fromDate}
+          endDate={toDate}
+          onApply={(start,end) => {
+            setFromDate(start);
+            setToDate(end);
+          }}
+          onClear={() => {
+            setFromDate('');
+            setToDate('');
+          }}
+        />
+        {(fromDate || toDate) ? (
+          <Tap
+            onPress={() => {
+              setFromDate('');
+              setToDate('');
+            }}
+            style={{paddingHorizontal:12,paddingVertical:6,backgroundColor:C.pale,borderRadius:10}}
+          >
+            <Text style={{color:C.primary,fontSize:11.5,fontWeight:'700'}}>{tr('Reset Dates','សម្អាត')}</Text>
+          </Tap>
+        ) : null}
+      </View>
       <Rise index={3}>
         <GradientCard>
           <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>

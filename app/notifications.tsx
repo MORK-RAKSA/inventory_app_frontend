@@ -15,7 +15,11 @@ import { useLiveData } from "../src/hooks/useLiveData";
 import { ReceiptModal } from "../src/components/ReceiptModal";
 import { Screen, Card, C, Empty, khr, money } from "../src/ui";
 import { Press } from "../src/motion";
-import { getLiveActivityLog, subscribeLiveActivity } from "../src/liveSync";
+import {
+  getLiveActivityLog,
+  subscribeLiveActivity,
+  markAllNotificationsRead,
+} from "../src/liveSync";
 import React from "react";
 
 const STORAGE = "retailflow:dismissed-notifications:v1";
@@ -37,6 +41,10 @@ export default function Notifications() {
   useEffect(() => {
     return subscribeLiveActivity(() => setLiveTick((n) => n + 1));
   }, []);
+  // Opening (or staying on) this screen marks everything as read, clearing the home-screen badge.
+  useEffect(() => {
+    markAllNotificationsRead();
+  }, [liveTick]);
   useEffect(() => {
     let mounted = true;
     AsyncStorage.getItem(STORAGE)
@@ -88,14 +96,12 @@ export default function Notifications() {
   const sevenDaysAgo = Date.now() - 7 * 86400000;
   const liveEvents = useMemo(
     () =>
-      getLiveActivityLog()
-        .filter((ev) => ev.type !== "CHECKOUT")
-        .map((ev) => ({
-          key: ev.id,
-          title: `${ev.titleKh} · ${ev.titleEn}`,
-          detail: ev.detail,
-          danger: false,
-        })),
+      getLiveActivityLog().map((ev) => ({
+        key: ev.id,
+        title: `${ev.titleKh} · ${ev.titleEn}`,
+        detail: `${ev.detail} · ${new Date(ev.timestampMs || ev.createdAt).toLocaleString()}`,
+        danger: false,
+      })),
     [liveTick, products],
   );
   const normal = useMemo<Event[]>(

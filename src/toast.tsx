@@ -1,5 +1,5 @@
 import React,{createContext,useCallback,useContext,useEffect,useRef,useState} from 'react';
-import {Pressable,Text,View, Platform, ToastAndroid, Alert} from 'react-native';
+import {Pressable,Text,View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type Tone='success'|'error'|'warning'|'info';
@@ -11,15 +11,7 @@ export function ToastProvider({children}:{children:React.ReactNode}) {
   const [notice,setNotice]=useState<Notice|null>(null);
   const id=useRef(0);
   const show=useCallback((message:string,opts:Partial<Omit<Notice,'id'|'message'>>={})=>{
-    // Platform‑aware handling
-    if (Platform.OS==='android') {
-      ToastAndroid.show(message, ToastAndroid.SHORT);
-      return;
-    }
-    if (Platform.OS==='ios') {
-      Alert.alert('', message);
-      return;
-    }
+    // Always use the in-app banner: ToastAndroid is tiny and vanishes, and iOS Alert blocks the screen.
     setNotice({id:++id.current,message,tone:opts.tone||'info',actionLabel:opts.actionLabel,onAction:opts.onAction,duration:opts.duration??4500});
   },[]);
   const dismiss=useCallback(()=>setNotice(null),[]);
