@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/((?!_expo/|assets/|favicon.ico).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "គ្រប់ហាង, EasySell",
+    "slug": "easysell",
+    "scheme": "easysell",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow គ្រប់ហាង, EasySell to access your camera to scan product barcodes."
+        }
+      ],
+      "expo-secure-store",
+      "expo-audio"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.easysell.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow គ្រប់ហាង, EasySell to access your camera to scan product barcodes.",
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "com.easysell.mobile",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "INTERNET",
+        "VIBRATE",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    }
+  }
+}
