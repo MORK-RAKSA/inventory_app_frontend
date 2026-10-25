@@ -217,16 +217,19 @@ export function LiveAlertWatcher() {
             // Portal receives custom toast notification banner
             if (ev.type === 'CHECKOUT') {
               toast.show(`${tr(ev.titleEn, ev.titleKh)} · ${ev.detail}`, {
+                title: tr('New sale on another device', 'មានការលក់ថ្មីពីឧបករណ៍ផ្សេង'),
                 tone: 'success',
                 duration: 6000,
               });
             } else if (ev.type === 'PRODUCT_ADDED') {
               toast.show(`${tr(ev.titleEn, ev.titleKh)} (${ev.detail})`, {
+                title: tr('Product added elsewhere', 'មានទំនិញថ្មីបន្ថែម'),
                 tone: 'success',
                 duration: 5000,
               });
             } else if (ev.type === 'PRODUCT_UPDATED') {
               toast.show(`${tr(ev.titleEn, ev.titleKh)} (${ev.detail})`, {
+                title: tr('Product updated elsewhere', 'មានការកែទំនិញ'),
                 tone: 'info',
                 duration: 4500,
               });

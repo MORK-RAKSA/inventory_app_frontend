@@ -67,7 +67,7 @@ export default function SettingsPage() {
                 {tr('Mobile Scanner Gun', 'ម៉ាស៊ីនស្កេនបាកូដឥតខ្សែ')}
               </Text>
               <Text style={{color: C.muted, fontSize: 12.5, marginTop: 2}}>
-                {tr('Beam barcodes to Web Portal POS & Ledger', 'បញ្ជូនបាកូដផ្ទាល់ទៅកាន់ Web Portal')}
+                {tr('Beam barcodes to Web Portal POS', 'បញ្ជូនបាកូដផ្ទាល់ទៅកាន់ Web Portal')}
               </Text>
             </View>
           </View>

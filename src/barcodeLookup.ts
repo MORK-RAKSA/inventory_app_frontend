@@ -28,11 +28,15 @@ async function getBarcodeDict(): Promise<Record<string, BarcodeProductInfo>> {
   return memoryDict;
 }
 
+/**
+ * Saves a confirmed product name for a barcode on this device.
+ * Uses the same canonical key as lookupBarcodeOnline so corrections always match on the next scan.
+ */
 export async function rememberBarcodeInfo(
   barcode: string | null | undefined,
   info: { name: string; category?: string; imageUrl?: string | null }
 ): Promise<void> {
-  const clean = (barcode || '').trim();
+  const clean = canonicalBarcode((barcode || '').trim());
   if (!clean || !info.name?.trim()) return;
   try {
     const dict = await getBarcodeDict();
@@ -65,22 +69,34 @@ function cleanCategory(raw?: string): string | undefined {
   return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 
+/** Lowercase and strip punctuation/spaces so "Lay's" and "Lays" compare as equal. */
+function normalizeText(s: string): string {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+/** True if `haystack` already contains `needle`, ignoring case and punctuation. */
+function containsText(haystack: string, needle: string): boolean {
+  const n = normalizeText(needle);
+  if (!n) return true;
+  return normalizeText(haystack).includes(n);
+}
+
 function extractOffProduct(clean: string, p: any): BarcodeProductInfo | null {
   if (!p || typeof p !== 'object') return null;
-  let rawName = (
+  let rawName = String(
     p.product_name ||
-    p.product_name_en ||
-    p.product_name_km ||
-    p.product_name_th ||
-    p.product_name_vi ||
-    p.product_name_zh ||
-    p.product_name_ja ||
-    p.product_name_ko ||
-    p.product_name_fr ||
-    p.generic_name ||
-    p.generic_name_en ||
-    p.abbreviated_product_name ||
-    ''
+      p.product_name_en ||
+      p.product_name_km ||
+      p.product_name_th ||
+      p.product_name_vi ||
+      p.product_name_zh ||
+      p.product_name_ja ||
+      p.product_name_ko ||
+      p.product_name_fr ||
+      p.generic_name ||
+      p.generic_name_en ||
+      p.abbreviated_product_name ||
+      ''
   ).trim();
 
   if (!rawName) {
@@ -95,11 +111,9 @@ function extractOffProduct(clean: string, p: any): BarcodeProductInfo | null {
   const brand = String(p.brands || '').split(',')[0]?.trim();
   const qtyLabel = String(p.quantity || '').trim();
   let name =
-    rawName && brand && !rawName.toLowerCase().includes(brand.toLowerCase())
-      ? `${brand} ${rawName}`
-      : rawName || brand;
+    rawName && brand && !containsText(rawName, brand) ? `${brand} ${rawName}` : rawName || brand;
 
-  if (name && qtyLabel && !name.toLowerCase().includes(qtyLabel.toLowerCase())) {
+  if (name && qtyLabel && !containsText(name, qtyLabel)) {
     name = `${name} ${qtyLabel}`;
   }
 
@@ -116,6 +130,7 @@ function extractOffProduct(clean: string, p: any): BarcodeProductInfo | null {
 /**
  * Generates a clean, descriptive fallback product name from the barcode prefix
  * when an item is a local/custom product not yet indexed in global barcode databases.
+ * The result has isFallback: true, so the UI should ask the user for the real name.
  */
 export function buildSmartBarcodeName(barcode: string): BarcodeProductInfo {
   const clean = barcode.trim();
@@ -158,11 +173,14 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 4000): Promise<any 
 
 /**
  * Looks up a retail barcode across:
- * 1. Local on-device barcode dictionary (instant 0ms)
- * 2. EasySell Backend multi-catalog lookup (/api/barcode-lookup/:code)
- * 3. OpenFoodFacts / OpenProductsFacts / OpenBeautyFacts / OpenPetFoodFacts (all language fields)
+ * 1. Local on-device barcode dictionary (instant)
+ * 2. EasySell Backend multi-catalog lookup (/barcode-lookup/:code)
+ * 3. OpenFoodFacts / OpenProductsFacts / OpenBeautyFacts / OpenPetFoodFacts
  * 4. UPCitemdb & Brocade.io open barcode databases
  * 5. Smart GS1 barcode fallback name if not in any online catalog
+ *
+ * Check `isFallback` on the result: if true, ask the user to type the real name
+ * and save it with rememberBarcodeInfo().
  */
 export async function lookupBarcodeOnline(
   barcode: string,
@@ -180,7 +198,7 @@ export async function lookupBarcodeOnline(
 
   // 2. Query backend proxy + direct global databases in parallel
   const lookupTasks: Promise<BarcodeProductInfo | null>[] = [
-    // Backend multi-source proxy (includes Go-UPC HTML scrape + server-side UPCitemdb/OFF)
+    // Backend multi-source proxy
     (async () => {
       try {
         const res = await apiFetch(`/barcode-lookup/${encodeURIComponent(clean)}`);
@@ -222,10 +240,7 @@ export async function lookupBarcodeOnline(
       if (d?.name) {
         const brand = String(d.brand_name || '').trim();
         const rawName = String(d.name).trim();
-        const name =
-          brand && !rawName.toLowerCase().includes(brand.toLowerCase())
-            ? `${brand} ${rawName}`
-            : rawName;
+        const name = brand && !containsText(rawName, brand) ? `${brand} ${rawName}` : rawName;
         return { barcode: clean, name, isFallback: false };
       }
       return null;
@@ -241,10 +256,7 @@ export async function lookupBarcodeOnline(
       if (item?.title) {
         const title = String(item.title).trim();
         const brand = String(item.brand || '').trim();
-        const name =
-          brand && !title.toLowerCase().includes(brand.toLowerCase())
-            ? `${brand} ${title}`
-            : title;
+        const name = brand && !containsText(title, brand) ? `${brand} ${title}` : title;
         return {
           barcode: clean,
           name,
@@ -289,4 +301,25 @@ export async function lookupBarcodeOnline(
     return buildSmartBarcodeName(clean);
   }
   return null;
+}
+
+/**
+ * Convenience helper for your scan screen.
+ * - If the lookup found a real name, returns it.
+ * - If it only got a fallback, calls `askUserForName(fallbackName)` so you can show
+ *   your own modal/prompt, then saves whatever the user typed.
+ */
+export async function resolveProductName(
+  scannedCode: string,
+  askUserForName: (suggestedName: string) => Promise<string | null | undefined>
+): Promise<BarcodeProductInfo | null> {
+  const info = await lookupBarcodeOnline(scannedCode);
+  if (!info) return null;
+  if (!info.isFallback) return info;
+
+  const typed = (await askUserForName(info.name))?.trim();
+  if (!typed) return info;
+
+  await rememberBarcodeInfo(scannedCode, { name: typed, category: info.category });
+  return { ...info, name: typed, isFallback: false };
 }
