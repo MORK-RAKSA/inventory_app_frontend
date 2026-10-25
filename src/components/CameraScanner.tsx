@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Text, View, TextInput, Platform, Alert, ScrollView } from 'react-native';
+import { useKeepAwake } from 'expo-keep-awake';
 import { CameraView, useCameraPermissions, BarcodeType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, {
@@ -123,6 +124,7 @@ export function CameraScanner({
   const [scanCount, setScanCount] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [customQty, setCustomQty] = useState('');
+  const [cameraReady, setCameraReady] = useState(false);
   const [bannerState, setBannerState] = useState<'idle' | 'success' | 'fail'>('idle');
   const [failReason, setFailReason] = useState('');
   const last = useRef({ code: '', at: 0 });
@@ -327,6 +329,7 @@ export function CameraScanner({
     }
   }
 
+  // Mobile camera barcode session — keep the device awake for the duration of scanning
   // Web 1D + 2D continuous scanner
   useEffect(() => {
     if (!visible || Platform.OS !== 'web' || typeof document === 'undefined') return;
@@ -413,6 +416,7 @@ export function CameraScanner({
       setFailReason('');
       setBannerState('idle');
       flash.value = 0;
+      setCameraReady(false);
     }
   }, [visible]);
 
@@ -546,7 +550,7 @@ export function CameraScanner({
           </Press>
         </View>
 
-        {/* Camera Viewport */}
+        {/* Camera viewport — the scanner overlay visibly indicates when the camera feed is paused */}
         {permission?.granted ? (
           <View
             style={{
@@ -566,8 +570,18 @@ export function CameraScanner({
               zoom={zoomValue}
               enableTorch={Platform.OS !== 'web' && torch}
               barcodeScannerSettings={{ barcodeTypes: ALL_BARCODE_TYPES }}
-              onBarcodeScanned={(e) => cameraRead(e.data, e.type)}
-              onMountError={(e) => setCameraError(e.message || 'Camera unavailable')}
+              onBarcodeScanned={(e) => {
+                setCameraReady(true);
+                cameraRead(e.data, e.type);
+              }}
+              onCameraReady={() => {
+                setCameraReady(true);
+                setCameraError('');
+              }}
+              onMountError={(e) => {
+                setCameraReady(false);
+                setCameraError(e.message || 'Camera unavailable');
+              }}
             />
             <Animated.View
               pointerEvents="none"
@@ -627,6 +641,13 @@ export function CameraScanner({
                     {tr('Scanned!', 'ស្កេនជោគជ័យ!')} {lastLabel}
                   </Text>
                 </Animated.View>
+              )}
+              {!cameraReady && (
+                <View style={{ alignItems: 'center', marginTop: 8 }}>
+                  <Text style={{ color: '#FCA5A5', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
+                    {tr('Camera paused', 'កាមេរ៉ាឈ្លាក់')}
+                  </Text>
+                </View>
               )}
               {isFail && (
                 <Animated.View
@@ -739,8 +760,7 @@ export function CameraScanner({
               </View>
             </View>
           </View>
-        ) : (
-          <View style={{ flex: 1, justifyContent: 'center', padding: 30, gap: 12 }}>
+        ) : (              <View style={{ flex: 1, justifyContent: 'center', padding: 30, gap: 12 }}>
             <Text style={{ color: 'white', textAlign: 'center', marginBottom: 8 }}>
               {cameraError
                 ? tr(
@@ -751,6 +771,7 @@ export function CameraScanner({
             </Text>
             <Btn
               onPress={() => {
+                setCameraReady(false);
                 setCameraError('');
                 requestPermission().catch((e) =>
                   setCameraError(String(e?.message || e || 'Camera permission denied')),
@@ -759,6 +780,21 @@ export function CameraScanner({
             >
               {tr('Allow camera', 'អនុញ្ញាតកាមេរ៉ា')}
             </Btn>
+
+            {!cameraReady && Platform.OS !== 'web' && (
+              <View style={{ marginTop: 10 }}>
+                <Btn
+                  onPress={() => {
+                    setCameraReady(false);
+                    setCameraError('');
+                    requestPermission();
+                  }}
+                  style={{ marginBottom: 6 }}
+                >
+                  {tr('Tap to resume camera', 'ចុចដើម្បីបន្តកាមេរ៉ា')}
+                </Btn>
+              </View>
+            )}
             {Platform.OS === 'web' && (
               <Btn soft icon={ImagePlus} onPress={() => void scanFromImage()}>
                 {tr('Scan from photo / image instead', 'ស្កេនពីរូបភាពជំនួសវិញ')}

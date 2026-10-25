@@ -46,7 +46,7 @@ export function LiveAlertsPanel({
             <Bell size={15} color={P.primary} strokeWidth={2.3} />
           </View>
           <Text style={{ color: P.text, fontSize: 14.5, fontWeight: '800', letterSpacing: -0.2 }}>
-            {tr('Live Alerts', 'ការជូនដំណឹងផ្ទាល់')}
+            {tr('Notification', 'ការជូនដំណឹង')}
           </Text>
           <View
             style={{
@@ -136,7 +136,7 @@ export function LiveAlertsPanel({
                   {p.stock === 0 ? 'OUT OF STOCK' : `${p.stock} left`} · {khr(p.priceUsd * rate)}
                 </Text>
               </View>
-              <Press
+              {/* <Press
                 onPress={() => onRestock(p, 20)}
                 style={{
                   backgroundColor: P.primary,
@@ -146,7 +146,7 @@ export function LiveAlertsPanel({
                 }}
               >
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>+20</Text>
-              </Press>
+              </Press> */}
             </View>
           ))}
         </View>

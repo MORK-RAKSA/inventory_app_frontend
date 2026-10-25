@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeType } from 'expo-camera';
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import Animated, {
   Easing,
   FadeIn,
@@ -76,6 +77,8 @@ export function MobileScannerGunModal({
   const [lastBeamed, setLastBeamed] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
   const [beaming, setBeaming] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState('');
 
   const pendingRead = useRef<{ code: string; n: number; at: number }>({ code: '', n: 0, at: 0 });
   const lastScannedRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
@@ -88,8 +91,11 @@ export function MobileScannerGunModal({
         -1,
         true
       );
+      try { activateKeepAwake(); } catch (_) {}
+    } else {
+      try { deactivateKeepAwake(); } catch (_) {}
     }
-  }, [visible, scanLineAnim]);
+  }, [visible]);
 
   const laserStyle = useAnimatedStyle(() => ({
     top: `${scanLineAnim.value * 88 + 6}%`,
@@ -293,6 +299,11 @@ export function MobileScannerGunModal({
               enableTorch={torch}
               barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
               onBarcodeScanned={(e) => handleBarcodeScanned({ data: e.data, type: e.type })}
+              onCameraReady={() => setCameraReady(true)}
+              onMountError={(e) => {
+                setCameraReady(false);
+                setCameraError(e.message || 'Camera unavailable');
+              }}
             />
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -315,7 +326,7 @@ export function MobileScannerGunModal({
             </View>
           )}
 
-          {/* Scanner Reticle Overlay */}
+          {/* Scanner reticle overlay — only drawn while the camera is actually live */}
           <View
             pointerEvents="none"
             style={{
@@ -326,27 +337,39 @@ export function MobileScannerGunModal({
               bottom: 30,
               borderRadius: 16,
               borderWidth: 2,
-              borderColor: beaming ? '#10B981' : 'rgba(255,255,255,0.4)',
+              borderColor: beaming ? '#10B981' : cameraReady ? 'rgba(255,255,255,0.4)' : 'rgba(239, 68, 68, 0.9)',
               justifyContent: 'center',
               alignItems: 'center',
-              backgroundColor: beaming ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+              backgroundColor: beaming
+                ? 'rgba(16, 185, 129, 0.15)'
+                : cameraReady
+                  ? 'transparent'
+                  : 'rgba(127, 29, 29, 0.28)',
             }}
           >
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  left: 8,
-                  right: 8,
-                  height: 2,
-                  backgroundColor: beaming ? '#10B981' : '#A78BFA',
-                  shadowColor: '#A78BFA',
-                  shadowOpacity: 0.8,
-                  shadowRadius: 6,
-                },
-                laserStyle,
-              ]}
-            />
+            {cameraReady ? (
+              <Animated.View
+                style={[
+                  {
+                    position: 'absolute',
+                    left: 8,
+                    right: 8,
+                    height: 2,
+                    backgroundColor: beaming ? '#10B981' : '#A78BFA',
+                    shadowColor: '#A78BFA',
+                    shadowOpacity: 0.8,
+                    shadowRadius: 6,
+                  },
+                  laserStyle,
+                ]}
+              />
+            ) : (
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#FCA5A5', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                  {tr('Camera paused', 'កាមេរ៉ាឈ្លាក់')}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -392,7 +415,7 @@ export function MobileScannerGunModal({
           </View>
         ) : null}
 
-        {/* Manual Barcode Fallback Input */}
+        {/* Manual barcode fallback input — usable even when the camera feed is paused */}
         <View
           style={{
             flexDirection: 'row',
@@ -436,7 +459,7 @@ export function MobileScannerGunModal({
           </Press>
         </View>
 
-        {/* Beamed Barcode Log History */}
+        {/* Beamed barcode log history */}
         <View style={{ flex: 1, marginTop: 14, paddingHorizontal: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text style={{ color: '#9CA3AF', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>
@@ -492,6 +515,34 @@ export function MobileScannerGunModal({
               ))
             )}
           </ScrollView>
+
+          {!cameraReady && (
+            <View style={{ marginHorizontal: 16, marginTop: 6, marginBottom: 12 }}>
+              <Press
+                onPress={() => {
+                  setCameraReady(false);
+                  setCameraError('');
+                  requestPermission();
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  backgroundColor: '#1F2937',
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: '#374151',
+                }}
+              >
+                <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 12.5 }}>
+                  {tr('Tap to resume camera', 'ចុចដើម្បីបន្តកាមេរ៉ា')}
+                </Text>
+              </Press>
+            </View>
+          )}
         </View>
       </View>
     </Modal>

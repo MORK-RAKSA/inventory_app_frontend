@@ -41,10 +41,7 @@ export function UomTemplateManager({
             {tr('Packaging UOM Configurations', 'ទម្រង់កំណត់ឯកតាកញ្ចប់ UOM')}
           </Text>
           <Text style={{ color: P.muted, fontSize: 12, marginTop: 2 }}>
-            {tr(
-              'Configure reusable packaging standards. These templates are automatically used in Product creation, Update forms, and Batch intake.',
-              'កំណត់ស្តង់ដារឯកតាកញ្ចប់ដែលអាចប្រើឡើងវិញបាន។ ទម្រង់ទាំងនេះនឹងប្រើប្រាស់ពេលបង្កើតទំនិញ និងនាំចូលស្តុក។'
-            )}
+            {tr('Packaging units used for product creation and batch intake.', 'ឯកតាកញ្ចប់សម្រាប់បង្កើតទំនិញ និងនាំចូលស្តុក។')}
           </Text>
         </View>
         <Press

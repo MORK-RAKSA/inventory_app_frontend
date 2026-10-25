@@ -14,7 +14,7 @@ import Animated,{
   withTiming,
 } from 'react-native-reanimated';
 import {User,Lock,Eye,EyeOff,ArrowRight,Store,AlertCircle,Monitor,Smartphone} from 'lucide-react-native';
-import {login,restore} from '../src/auth';
+import {login,restore,apiFetch} from '../src/auth';
 import {registerSignOut} from '../src/authEvents';
 import {StatusBar} from 'expo-status-bar';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
@@ -161,6 +161,12 @@ export default function Root() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotUser, setForgotUser] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotPin, setForgotPin] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
   // Default to Portal Website UI on Web desktop/tablet, or allow instant switching on any web screen
   const [uiMode, setUiMode] = useState<'portal' | 'mobile'>(() =>
     Platform.OS === 'web' && width >= 768 ? 'portal' : 'mobile'
@@ -221,6 +227,43 @@ export default function Root() {
       triggerShake();
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotUser.trim() || !forgotNewPass.trim()) {
+      setForgotMsg('Please enter username and new password');
+      return;
+    }
+    setForgotLoading(true);
+    setForgotMsg('');
+    try {
+      const res = await apiFetch('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: forgotUser.trim(),
+          newPassword: forgotNewPass.trim(),
+          recoveryKey: forgotPin.trim() || 'admin1234',
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = 'Reset failed';
+        try { msg = JSON.parse(text).error || msg; } catch (_) {}
+        throw new Error(msg);
+      }
+      setForgotMsg('Password reset! You can sign in now.');
+      setUsername(forgotUser.trim());
+      setPassword(forgotNewPass.trim());
+      setTimeout(() => {
+        setShowForgot(false);
+        setForgotMsg('');
+      }, 1500);
+    } catch (err: any) {
+      setForgotMsg(err?.message || 'Failed to reset password');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -400,6 +443,106 @@ export default function Root() {
                     />
                   </Rise>
 
+                  <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginTop: -8, marginBottom: 16}}>
+                    <Press onPress={() => setShowForgot((prev) => !prev)}>
+                      <Text style={{color: C.primary, fontSize: 12.5, fontWeight: '700'}}>
+                        {showForgot ? 'Back to sign in' : 'Forgot password?'}
+                      </Text>
+                    </Press>
+                  </View>
+
+                  {showForgot && (
+                    <View
+                      style={{
+                        backgroundColor: '#FFFBEB',
+                        borderRadius: R.md,
+                        padding: 16,
+                        marginBottom: 16,
+                        borderWidth: 1,
+                        borderColor: '#FDE68A',
+                        gap: 10,
+                      }}
+                    >
+                      <Text style={{color: '#92400E', fontSize: 13, fontWeight: '800'}}>
+                        Reset Account Password
+                      </Text>
+                      <TextInput
+                        placeholder="Your username (e.g. admin)"
+                        placeholderTextColor="#9CA3AF"
+                        value={forgotUser}
+                        onChangeText={setForgotUser}
+                        autoCapitalize="none"
+                        style={{
+                          height: 40,
+                          borderWidth: 1,
+                          borderColor: '#FCD34D',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          fontSize: 13,
+                          backgroundColor: '#FFFFFF',
+                          color: C.text,
+                        }}
+                      />
+                      <TextInput
+                        placeholder="New password"
+                        placeholderTextColor="#9CA3AF"
+                        value={forgotNewPass}
+                        onChangeText={setForgotNewPass}
+                        secureTextEntry
+                        style={{
+                          height: 40,
+                          borderWidth: 1,
+                          borderColor: '#FCD34D',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          fontSize: 13,
+                          backgroundColor: '#FFFFFF',
+                          color: C.text,
+                        }}
+                      />
+                      <TextInput
+                        placeholder="Recovery PIN (default: admin1234 or 8888)"
+                        placeholderTextColor="#9CA3AF"
+                        value={forgotPin}
+                        onChangeText={setForgotPin}
+                        style={{
+                          height: 40,
+                          borderWidth: 1,
+                          borderColor: '#FCD34D',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          fontSize: 13,
+                          backgroundColor: '#FFFFFF',
+                          color: C.text,
+                        }}
+                      />
+                      {forgotMsg ? (
+                        <Text style={{color: forgotMsg.includes('reset!') ? '#059669' : '#DC2626', fontSize: 12, fontWeight: '700'}}>
+                          {forgotMsg}
+                        </Text>
+                      ) : null}
+                      <Press
+                        disabled={forgotLoading}
+                        onPress={handleForgotPassword}
+                        style={{
+                          height: 40,
+                          backgroundColor: '#D97706',
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {forgotLoading ? (
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                          <Text style={{color: '#FFFFFF', fontSize: 13, fontWeight: '800'}}>
+                            Reset & Apply Password
+                          </Text>
+                        )}
+                      </Press>
+                    </View>
+                  )}
+
                   {error ? (
                     <Animated.View
                       entering={FadeInDown.duration(200).easing(ease)}
@@ -450,6 +593,106 @@ export default function Root() {
                       )}
                     </Press>
                   </Rise>
+
+                  <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginTop: -8, marginBottom: 16}}>
+                    <Press onPress={() => setShowForgot((prev) => !prev)}>
+                      <Text style={{color: C.primary, fontSize: 12.5, fontWeight: '700'}}>
+                        {showForgot ? 'Back to sign in' : 'Forgot password?'}
+                      </Text>
+                    </Press>
+                  </View>
+
+                  {showForgot && (
+                    <View
+                      style={{
+                        backgroundColor: '#FFFBEB',
+                        borderRadius: R.md,
+                        padding: 16,
+                        marginBottom: 16,
+                        borderWidth: 1,
+                        borderColor: '#FDE68A',
+                        gap: 10,
+                      }}
+                    >
+                      <Text style={{color: '#92400E', fontSize: 13, fontWeight: '800'}}>
+                        Reset Account Password
+                      </Text>
+                      <TextInput
+                        placeholder="Your username (e.g. admin)"
+                        placeholderTextColor="#9CA3AF"
+                        value={forgotUser}
+                        onChangeText={setForgotUser}
+                        autoCapitalize="none"
+                        style={{
+                          height: 40,
+                          borderWidth: 1,
+                          borderColor: '#FCD34D',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          fontSize: 13,
+                          backgroundColor: '#FFFFFF',
+                          color: C.text,
+                        }}
+                      />
+                      <TextInput
+                        placeholder="New password"
+                        placeholderTextColor="#9CA3AF"
+                        value={forgotNewPass}
+                        onChangeText={setForgotNewPass}
+                        secureTextEntry
+                        style={{
+                          height: 40,
+                          borderWidth: 1,
+                          borderColor: '#FCD34D',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          fontSize: 13,
+                          backgroundColor: '#FFFFFF',
+                          color: C.text,
+                        }}
+                      />
+                      <TextInput
+                        placeholder="Recovery PIN (default: admin1234 or 8888)"
+                        placeholderTextColor="#9CA3AF"
+                        value={forgotPin}
+                        onChangeText={setForgotPin}
+                        style={{
+                          height: 40,
+                          borderWidth: 1,
+                          borderColor: '#FCD34D',
+                          borderRadius: 8,
+                          paddingHorizontal: 10,
+                          fontSize: 13,
+                          backgroundColor: '#FFFFFF',
+                          color: C.text,
+                        }}
+                      />
+                      {forgotMsg ? (
+                        <Text style={{color: forgotMsg.includes('reset!') ? '#059669' : '#DC2626', fontSize: 12, fontWeight: '700'}}>
+                          {forgotMsg}
+                        </Text>
+                      ) : null}
+                      <Press
+                        disabled={forgotLoading}
+                        onPress={handleForgotPassword}
+                        style={{
+                          height: 40,
+                          backgroundColor: '#D97706',
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {forgotLoading ? (
+                          <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                          <Text style={{color: '#FFFFFF', fontSize: 13, fontWeight: '800'}}>
+                            Reset & Apply Password
+                          </Text>
+                        )}
+                      </Press>
+                    </View>
+                  )}
                 </Animated.View>
               </Rise>
 

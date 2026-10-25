@@ -48,10 +48,7 @@ export function UomHeader({
           </View>
         </View>
         <Text style={{ color: P.muted, fontSize: 13, marginTop: 4 }}>
-          {tr(
-            'Enterprise multi-level packaging hierarchies: configure base unit vs wholesale master cases (e.g. Case of 24, Pack of 6) and bulk tier discounts.',
-            'គ្រប់គ្រងអនុបាតឯកតាកញ្ចប់លក់ដុំ៖ កំណត់ឯកតាមូលដ្ឋាន និងកេស/កញ្ចប់លក់ដុំ (ឧ. កេស ២៤កំប៉ុង កញ្ចប់ ៦ដប) និងតម្លៃលក់ដុំ'
-          )}
+          {tr('Wholesale packaging units and case ratios.', 'ឯកតាកញ្ចប់ទំនិញ និងសមាមាត្រកេសលក់ដុំ។')}
         </Text>
       </View>
 

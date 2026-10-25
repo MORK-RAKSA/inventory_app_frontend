@@ -89,11 +89,13 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 }
 
 const KEY = "retailflow_session_v1";
-type Tokens = {
+export type Tokens = {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
   username: string;
+  role?: string;
+  fullName?: string;
 };
 let current: Tokens | null = null;
 let refreshing: Promise<boolean> | null = null;
@@ -154,6 +156,8 @@ export async function login(username: string, password: string) {
         refreshToken: `offline-refresh-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         expiresIn: 86400 * 90,
         username: username.trim(),
+        role: "ADMIN",
+        fullName: u === "admin" ? "System Administrator" : "Mork Raksa",
       };
       await store(offlineSession);
       return;
@@ -202,6 +206,14 @@ export async function refresh(): Promise<boolean> {
 }
 export function getUsername(): string {
   return current?.username ?? "";
+}
+
+export function getUserRole(): string {
+  return current?.role ?? "ADMIN";
+}
+
+export function getFullName(): string {
+  return current?.fullName ?? current?.username ?? "Admin";
 }
 
 export async function logout() {

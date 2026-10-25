@@ -166,7 +166,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   // Stable context value: consumers keep this object in hook dependency arrays, so a fresh
   // object per render would re-run their effects (and re-fire their toasts) in a loop.
-  const api = useMemo<ToastApi>(() => ({ show, dismiss }), [show, dismiss]);
+  const api = useMemo(() => ({ show, dismiss }), [show, dismiss]);
 
   const tone = notice ? TONES[notice.tone] : null;
   const Icon = tone?.icon;

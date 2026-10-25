@@ -76,7 +76,7 @@ export function ProductModal({ portal }: { portal: PortalController }) {
             <Text style={{ color: P.text, fontSize: 19, fontWeight: '800' }}>
               {editingProduct
                 ? tr('Edit Product', 'កែប្រែទំនិញ')
-                : tr('Create New Product', 'បន្ថែមទំនិញថ្មី')}
+                : tr('Create Product', 'បង្កើតទំនិញ')}
             </Text>
             <Press onPress={() => setShowProductModal(false)}>
               <X size={20} color={P.muted} />
@@ -460,9 +460,6 @@ export function ProductModal({ portal }: { portal: PortalController }) {
                           ? `${(roundKhr(Number(formWholesalePrice) * (parseInt(formCaseQty, 10) || 24))).toLocaleString()} ៛`
                           : `$${(Number(formWholesalePrice) * (parseInt(formCaseQty, 10) || 24)).toFixed(2)}`}
                       </Text>
-                      <Text style={{ color: '#0F766E', fontSize: 11, marginTop: 2 }}>
-                        {tr('Based on chosen UOM configuration template', 'កំណត់តាមរយៈទម្រង់ UOM ស្តង់ដារ')}
-                      </Text>
                     </View>
                   )}
                 </View>
@@ -501,8 +498,8 @@ export function ProductModal({ portal }: { portal: PortalController }) {
                   {savingProduct
                     ? 'Saving...'
                     : editingProduct
-                    ? tr('Save Changes', 'រក្សាទុកការកែប្រែ')
-                    : tr('Create Product', 'បង្កើតទំនិញថ្មី')}
+                    ? tr('Save', 'រក្សាទុក')
+                    : tr('Create', 'បង្កើត')}
                 </Text>
               </Press>
             </View>

@@ -59,12 +59,6 @@ export function UomTab({ portal }: { portal: PortalController }) {
         <Text style={{ color: P.text, fontSize: 15, fontWeight: '800' }}>
           {tr('Products Linked to Packaging UOM', 'ទំនិញដែលបានកំណត់ឯកតា UOM')}
         </Text>
-        <Text style={{ color: P.muted, fontSize: 12, marginTop: 2 }}>
-          {tr(
-            'View active products, case pricing, and stock converted into packaging units.',
-            'មើលទំនិញ តម្លៃលក់ដុំ និងចំនួនស្តុកដែលគិតជាកេស។'
-          )}
-        </Text>
       </View>
 
       <UomSearchBar search={uomSearch} onSearchChange={setUomSearch} tr={tr} />

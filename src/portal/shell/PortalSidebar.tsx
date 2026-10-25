@@ -119,7 +119,7 @@ export function PortalSidebar({ portal }: { portal: PortalController }) {
                 {user}
               </Text>
               <Text style={{ color: P.muted, fontSize: 10.5, marginTop: 1 }} numberOfLines={1}>
-                {tr('Store Admin', 'អ្នកគ្រប់គ្រងហាង')}
+                {portal.userRole === 'ADMIN' ? tr('Store Administrator', 'អ្នកគ្រប់គ្រងហាង') : tr('Store Staff', 'បុគ្គលិកហាង')}
               </Text>
             </View>
             <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: P.emerald }} />
@@ -297,11 +297,11 @@ export function PortalSidebar({ portal }: { portal: PortalController }) {
             }}
           >
             <Text style={{ color: P.rose, fontSize: 12, fontWeight: '800' }}>
-              {tr('Sign out of portal', 'ចាកចេញពីផតថល')}
+              {tr('Sign out', 'ចាកចេញ')}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <LogOut size={14} color={P.rose} />
-              <ChevronRight size={13} color={P.rose} />
+              {/* <ChevronRight size={13} color={P.rose} /> */}
             </View>
           </Press>
         </View>

@@ -2,9 +2,9 @@ import {useCallback,useEffect,useState} from 'react';
 import {Text,View} from 'react-native';
 import Animated,{FadeIn,FadeOut} from 'react-native-reanimated';
 import {useFocusEffect} from 'expo-router';
-import {ArrowLeftRight,ShieldCheck,Globe2,Info,CheckCircle2,ScanLine,Radio,Smartphone} from 'lucide-react-native';
+import {ArrowLeftRight,ShieldCheck,Globe2,Info,CheckCircle2,ScanLine,Radio,Smartphone,User,LogOut} from 'lucide-react-native';
 import {api,Settings} from '../../src/api';
-import {logout} from '../../src/auth';
+import {logout,getUsername,getUserRole,getFullName} from '../../src/auth';
 import {showSignedOut} from '../../src/authEvents';
 import {Pressable} from 'react-native';
 import {useLanguage} from '../../src/i18n';
@@ -39,7 +39,48 @@ export default function SettingsPage() {
 
   return (
     <Screen title={t('settings')} subtitle={tr('Store preferences','គ្រប់គ្រងការកំណត់ហាង')}>
-      <Pressable onPress={async()=>{await logout();showSignedOut()}} style={{backgroundColor:C.pale,padding:14,borderRadius:14,alignItems:'center',marginBottom:12}}><Text style={{color:C.primary,fontWeight:'800'}}>Sign out</Text></Pressable>
+      <Card index={1}>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 14}}>
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 16,
+              backgroundColor: C.pale,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <User size={24} color={C.primary} strokeWidth={2.2} />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={{color: C.text, fontWeight: '800', fontSize: 16}}>
+              {getFullName() || getUsername() || 'Administrator'}
+            </Text>
+            <Text style={{color: C.muted, fontSize: 12.5, marginTop: 2}}>
+              @{getUsername() || 'admin'} · {getUserRole() === 'ADMIN' ? tr('Administrator', 'អ្នកគ្រប់គ្រង') : tr('Staff', 'បុគ្គលិក')}
+            </Text>
+          </View>
+          <Pressable
+            onPress={async () => {
+              await logout();
+              showSignedOut();
+            }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: C.redPale,
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+            }}
+          >
+            <LogOut size={14} color={C.red} strokeWidth={2.2} />
+            <Text style={{color: C.red, fontWeight: '800', fontSize: 12.5}}>{tr('Sign out', 'ចាកចេញ')}</Text>
+          </Pressable>
+        </View>
+      </Card>
       <Card index={2}>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18}}>
           <IconBadge icon={ArrowLeftRight} size={44} />

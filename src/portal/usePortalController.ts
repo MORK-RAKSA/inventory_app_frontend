@@ -8,8 +8,8 @@ import {
   ShoppingCart,
   SlidersHorizontal,
 } from 'lucide-react-native';
-import { api, DEFAULT_UOM_CONFIGS, Product, Sale, Settings, UomConfig } from '../api';
-import { getUsername } from '../auth';
+import { api, AppUser, DEFAULT_UOM_CONFIGS, Product, Sale, Settings, UomConfig } from '../api';
+import { getUsername, getUserRole, getFullName } from '../auth';
 import { khr, roundKhr } from '../theme';
 import { useLanguage } from '../i18n';
 import { useToast } from '../toast';
@@ -43,6 +43,8 @@ export function usePortalController() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [user, setUser] = useState<string>('Admin');
+  const [userRole, setUserRole] = useState<string>('ADMIN');
+  const [usersList, setUsersList] = useState<AppUser[]>([]);
 
   // Hardware Scanner Device State (USB / Bluetooth HID Wedge)
   const [lastScannedCode, setLastScannedCode] = useState<string>('');
@@ -176,15 +178,20 @@ export function usePortalController() {
       loadBusyRef.current = true;
       if (!silent) setRefreshing(true);
       try {
-        // Fetch sequentially so Vercel Serverless reuses one warm container
-        const p = await api<Product[]>('/products');
-        const s = await api<Sale[]>('/sales');
-        const cfg = await api<Settings>('/settings');
-        const uoms = await api<UomConfig[]>('/uom').catch(() => DEFAULT_UOM_CONFIGS);
+        const [p, s, cfg, uoms, uList] = await Promise.all([
+          api<Product[]>('/products'),
+          api<Sale[]>('/sales'),
+          api<Settings>('/settings'),
+          api<UomConfig[]>('/uom').catch(() => []),
+          api<AppUser[]>('/users').catch(() => []),
+        ]);
         setProducts(p || []);
         setSales(s || []);
-        if (Array.isArray(uoms) && uoms.length > 0) {
+        if (Array.isArray(uoms)) {
           setUomConfigs(uoms);
+        }
+        if (Array.isArray(uList) && uList.length > 0) {
+          setUsersList(uList);
         }
         if (cfg?.usdToKhr) {
           const roundedRate = roundKhr(Number(cfg.usdToKhr));
@@ -203,22 +210,33 @@ export function usePortalController() {
         setRefreshing(false);
       }
     },
-    [toast]
+    [toast, tr]
   );
 
+  const loadAllRef = useRef(loadAll);
+  loadAllRef.current = loadAll;
+
   useEffect(() => {
-    const u = getUsername();
+    const u = getFullName() || getUsername();
     if (u) setUser(u);
-    void loadAll();
+    const r = getUserRole();
+    if (r) setUserRole(r);
+    void loadAllRef.current();
+
+    let lastLiveSyncTime = 0;
     const unsub = subscribeLiveActivity(() => {
-      void loadAll(true);
+      const now = Date.now();
+      if (now - lastLiveSyncTime > 3000) {
+        lastLiveSyncTime = now;
+        void loadAllRef.current(true);
+      }
     });
-    const id = setInterval(() => void loadAll(true), 12000);
+    const id = setInterval(() => void loadAllRef.current(true), 25000);
     return () => {
       unsub();
       clearInterval(id);
     };
-  }, [loadAll]);
+  }, []);
 
   function addToCart(product: Product, delta = 1) {
     if (posMode === 'wholesale') {
@@ -734,7 +752,15 @@ export function usePortalController() {
       setScannerFlash(true);
       setTimeout(() => setScannerFlash(false), 1200);
 
-      if (scanMode === 'batch' || scanMode === 'inventory') {
+      if (scanMode === 'batch') {
+        if (!showBatchModal) {
+          setShowBatchModal(true);
+        }
+        handleHardwareBarcodeScan(barcode);
+        return;
+      }
+
+      if (scanMode === 'inventory') {
         const found = products.find((p) => (p.barcode || '').toLowerCase() === barcode.toLowerCase());
         if (found) {
           playScan();
@@ -1222,6 +1248,75 @@ export function usePortalController() {
     }
   }
 
+  async function createUserAction(userInput: {
+    username: string;
+    fullName: string;
+    email?: string;
+    role: string;
+    password: string;
+  }) {
+    try {
+      const created = await api<AppUser>('/users', {
+        method: 'POST',
+        body: JSON.stringify(userInput),
+      });
+      setUsersList((prev) => [...prev.filter((u) => u.username !== created.username), created]);
+      playScan();
+      toast.show(tr(`User @${created.username} created`, `បានបង្កើតអ្នកប្រើប្រាស់ @${created.username}`), {
+        title: tr('User created', 'បានបង្កើតអ្នកប្រើប្រាស់'),
+        tone: 'success',
+      });
+      return true;
+    } catch (e: any) {
+      playFail();
+      toast.show(e?.message || 'Failed to create user', {
+        title: tr('Create failed', 'បរាជ័យក្នុងការបង្កើត'),
+        tone: 'error',
+      });
+      return false;
+    }
+  }
+
+  async function deleteUserAction(targetUser: AppUser) {
+    try {
+      await api(`/users/${encodeURIComponent(targetUser.id)}`, { method: 'DELETE' });
+      setUsersList((prev) => prev.filter((u) => u.id !== targetUser.id));
+      playScan();
+      toast.show(tr(`User @${targetUser.username} removed`, `បានលុបអ្នកប្រើប្រាស់ @${targetUser.username}`), {
+        title: tr('User removed', 'បានលុបអ្នកប្រើប្រាស់'),
+        tone: 'info',
+      });
+    } catch (e: any) {
+      playFail();
+      toast.show(e?.message || 'Failed to remove user', {
+        title: tr('Delete failed', 'បរាជ័យក្នុងការលុប'),
+        tone: 'error',
+      });
+    }
+  }
+
+  async function resetPasswordAction(username: string, newPassword: string, recoveryKey = 'admin1234') {
+    try {
+      await api('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ username, newPassword, recoveryKey }),
+      });
+      playScan();
+      toast.show(tr(`Password for @${username} updated`, `លេខសម្ងាត់សម្រាប់ @${username} ត្រូវបានផ្លាស់ប្តូរ`), {
+        title: tr('Password reset', 'បានប្តូរលេខសម្ងាត់'),
+        tone: 'success',
+      });
+      return true;
+    } catch (e: any) {
+      playFail();
+      toast.show(e?.message || 'Failed to reset password', {
+        title: tr('Reset failed', 'បរាជ័យក្នុងការប្តូរ'),
+        tone: 'error',
+      });
+      return false;
+    }
+  }
+
   const navItems: { id: PortalTab; label: string; khLabel: string; icon: any; badge?: number }[] = [
     { id: 'dashboard', label: 'Overview', khLabel: 'ផ្ទាំងគ្រប់គ្រងរួម', icon: LayoutDashboard },
     { id: 'pos', label: 'Checkout', khLabel: 'ម៉ាស៊ីនគិតលុយ', icon: ShoppingCart, badge: (posMode === 'wholesale' ? wholesaleCartLines.length : cartLines.length) || undefined },
@@ -1255,6 +1350,7 @@ export function usePortalController() {
     refreshing,
     setRefreshing,
     user,
+    userRole,
     setUser,
     lastScannedCode,
     setLastScannedCode,
@@ -1413,6 +1509,10 @@ export function usePortalController() {
     quickRestock,
     archiveProduct,
     saveExchangeRate,
+    usersList,
+    createUserAction,
+    deleteUserAction,
+    resetPasswordAction,
   };
 }
 
