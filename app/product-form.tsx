@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -73,10 +74,38 @@ export default function ProductFormScreen() {
 
   const { products, rate, refresh } = useLiveData('products');
 
-  const categories = useMemo(
-    () => Array.from(new Set(['General', ...products.map((p) => p.category?.trim()).filter(Boolean)])),
-    [products]
-  );
+  const [configuredBaseUnits, setConfiguredBaseUnits] = useState<string[]>([
+    'Can', 'Bottle', 'Piece', 'Box', 'Pack', 'Kg', 'Litre', 'Roll', 'Cup', 'Bag'
+  ]);
+  const [configuredCategories, setConfiguredCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      AsyncStorage.getItem('retailflow_configured_base_units'),
+      AsyncStorage.getItem('retailflow_configured_categories'),
+    ]).then(([savedUnits, savedCats]) => {
+      if (savedUnits) {
+        try {
+          const parsed = JSON.parse(savedUnits);
+          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredBaseUnits(parsed);
+        } catch (_) {}
+      }
+      if (savedCats) {
+        try {
+          const parsed = JSON.parse(savedCats);
+          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredCategories(parsed);
+        } catch (_) {}
+      }
+    });
+  }, []);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>(['General', ...configuredCategories]);
+    products.forEach((p) => {
+      if (p.category?.trim()) set.add(p.category.trim());
+    });
+    return Array.from(set);
+  }, [configuredCategories, products]);
 
   // Form State
   const [name, setName] = useState('');
@@ -98,6 +127,14 @@ export default function ProductFormScreen() {
   const [caseUnitName, setCaseUnitName] = useState('Case');
   const [caseQty, setCaseQty] = useState('24');
   const [uomTemplates, setUomTemplates] = useState<UomConfig[]>(DEFAULT_UOM_CONFIGS);
+
+  const availableBaseUnits = useMemo(() => {
+    const set = new Set<string>(configuredBaseUnits);
+    uomTemplates.forEach((u) => {
+      if (u.baseUnit?.trim()) set.add(u.baseUnit.trim());
+    });
+    return Array.from(set);
+  }, [configuredBaseUnits, uomTemplates]);
 
   useEffect(() => {
     void api<UomConfig[]>('/uom')
@@ -314,6 +351,7 @@ export default function ProductFormScreen() {
         barcode: barcode.trim() || null,
         category: category.trim() || 'General',
         price: currency === 'KHR' ? roundKhr(rawPrice) : rawPrice,
+        currency,
         priceCurrency: currency,
         priceUsd,
         originalCcy: currency,
@@ -322,11 +360,23 @@ export default function ProductFormScreen() {
         lowStockThreshold: Math.max(0, parseInt(threshold, 10) || 5),
         expirationDate: expiry || null,
         imageUrl: photo || null,
+        wholesalePrice:
+          wholesaleUsdVal !== null
+            ? (currency === 'KHR'
+                ? roundKhr(wholesaleUsdVal * rate)
+                : Number(wholesaleUsdVal.toFixed(2)))
+            : null,
         wholesalePriceUsd: wholesaleUsdVal,
         wholesaleMinQty: Math.max(1, parseInt(wholesaleMinQty, 10) || 1),
         baseUnit: baseUnit.trim() || 'Piece',
         caseUnitName: caseUnitName.trim() || 'Case',
         caseQty: caseQuantity,
+        wholesalePricePerCase:
+          wholesalePricePerCase !== null
+            ? (currency === 'KHR'
+                ? roundKhr(wholesalePricePerCase * rate)
+                : Number(wholesalePricePerCase.toFixed(2)))
+            : null,
         wholesalePricePerCaseUsd: wholesalePricePerCase,
       };
 
@@ -729,39 +779,67 @@ export default function ProductFormScreen() {
                   })}
                 </View>
 
-                {/* Base Unit Selector */}
+                {/* Base Unit Selector from Portal Config */}
                 <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-                  {tr('Base Unit (Single Unit)', 'ឯកតារាយ')}
+                  {tr('Base Unit (Single Unit - Configured in Portal)', 'ឯកតារាយ (កំណត់ក្នុង Portal)')}
                 </Text>
-                <View style={styles.packagingPresetsRow}>
-                  {BASE_UNIT_PRESETS.map((b) => {
-                    const isSelected = baseUnit.toLowerCase() === b.value.toLowerCase();
-                    return (
-                      <Press
-                        key={b.value}
-                        onPress={() => setBaseUnit(b.value)}
-                        style={[
-                          styles.presetChip,
-                          isSelected && styles.presetChipActive,
-                        ]}
-                      >
-                        <Text
+                {Platform.OS === 'web' ? (
+                  /* @ts-ignore */
+                  <select
+                    value={baseUnit}
+                    onChange={(e: any) => setBaseUnit(e.target.value)}
+                    style={{
+                      height: 44,
+                      borderRadius: 12,
+                      border: `1.5px solid ${C.border}`,
+                      backgroundColor: '#FFFFFF',
+                      padding: '0 14px',
+                      color: C.text,
+                      fontSize: 14,
+                      fontWeight: '700',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      width: '100%',
+                      marginBottom: 10,
+                    }}
+                  >
+                    {availableBaseUnits.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <View style={styles.packagingPresetsRow}>
+                    {availableBaseUnits.map((b) => {
+                      const isSelected = baseUnit.toLowerCase() === b.toLowerCase();
+                      return (
+                        <Press
+                          key={b}
+                          onPress={() => setBaseUnit(b)}
                           style={[
-                            styles.presetChipText,
-                            isSelected && styles.presetChipTextActive,
+                            styles.presetChip,
+                            isSelected && styles.presetChipActive,
                           ]}
                         >
-                          {b.label}
-                        </Text>
-                      </Press>
-                    );
-                  })}
-                </View>
+                          <Text
+                            style={[
+                              styles.presetChipText,
+                              isSelected && styles.presetChipTextActive,
+                            ]}
+                          >
+                            {b}
+                          </Text>
+                        </Press>
+                      );
+                    })}
+                  </View>
+                )}
 
                 {/* Wholesale Case Price Summary Banner */}
                 {casePreview ? (
                   <View style={styles.wholesaleSummaryCard}>
-                    <Boxes size={18} color="#0D9488" />
+                    <Boxes size={18} color={C.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.wholesaleSummaryTitle}>
                         {tr('Calculated Case Price', 'តម្លៃសរុប ១ កេស')}
@@ -1089,8 +1167,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxBoxActive: {
-    borderColor: '#0D9488',
-    backgroundColor: '#0D9488',
+    borderColor: C.primary,
+    backgroundColor: C.primary,
   },
   checkboxLabel: {
     fontSize: 13.5,
@@ -1098,7 +1176,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   checkboxLabelActive: {
-    color: '#0F766E',
+    color: C.primary,
     fontWeight: '800',
   },
   toggleBadge: {
@@ -1108,7 +1186,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   toggleBadgeActive: {
-    backgroundColor: '#CCFBF1',
+    backgroundColor: C.paleStrong,
   },
   toggleBadgeText: {
     fontSize: 12,
@@ -1116,7 +1194,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   toggleBadgeTextActive: {
-    color: '#0D9488',
+    color: C.primary,
   },
   disabledWholesaleHint: {
     fontSize: 12.5,
@@ -1138,8 +1216,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   presetChipActive: {
-    backgroundColor: '#0D9488',
-    borderColor: '#0D9488',
+    backgroundColor: C.primary,
+    borderColor: C.primary,
   },
   presetChipText: {
     fontSize: 12,
@@ -1153,9 +1231,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#F0FDFA',
+    backgroundColor: C.pale,
     borderWidth: 1,
-    borderColor: '#99F6E4',
+    borderColor: C.border,
     padding: 12,
     borderRadius: 14,
     marginTop: 10,
@@ -1163,12 +1241,12 @@ const styles = StyleSheet.create({
   wholesaleSummaryTitle: {
     fontSize: 11.5,
     fontWeight: '700',
-    color: '#0F766E',
+    color: C.primary,
   },
   wholesaleSummaryValue: {
     fontSize: 13.5,
     fontWeight: '800',
-    color: '#0D9488',
+    color: C.primaryDark,
     marginTop: 2,
   },
   portalUomNotice: {

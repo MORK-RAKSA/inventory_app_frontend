@@ -205,11 +205,13 @@ export default function Inventory() {
       setName(fallback.name);
     }
 
-    const info = await resolveBarcodeName(clean);
-    const finalName = info?.name || fallback.name;
+    // Do NOT await the online catalog lookup: it is a network round-trip and made the scanner feel
+    // slow on every unknown barcode. The success feedback is instant, and the name field upgrades
+    // itself as soon as the lookup resolves.
+    void resolveBarcodeName(clean);
     return {
       ok: true,
-      label: `${finalName} (+${qty})`,
+      label: `${fallback.name} (+${qty})`,
     };
   }
 

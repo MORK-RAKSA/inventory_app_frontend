@@ -6,6 +6,7 @@ import type { PortalController } from '../usePortalController';
 
 export function UomModal({ portal }: { portal: PortalController }) {
   const {
+    closeUomModal,
     editingUomConfig,
     saveUomConfigAction,
     savingUom,
@@ -56,7 +57,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
                 {tr('Define reusable base unit vs master case ratio', 'កំណត់អនុបាតឯកតារាយ និងកេសដុំ')}
               </Text>
             </View>
-            <Press onPress={() => setShowUomModal(false)}>
+            <Press onPress={() => closeUomModal()}>
               <X size={18} color={P.muted} />
             </Press>
           </View>
@@ -184,7 +185,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
               <Press
-                onPress={() => setShowUomModal(false)}
+                onPress={() => closeUomModal()}
                 style={{
                   flex: 1,
                   height: 42,

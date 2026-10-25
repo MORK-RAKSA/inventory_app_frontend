@@ -40,9 +40,9 @@ export function UomTemplateManager({
           <Text style={{ color: P.text, fontSize: 15, fontWeight: '800' }}>
             {tr('Packaging UOM Configurations', 'ទម្រង់កំណត់ឯកតាកញ្ចប់ UOM')}
           </Text>
-          <Text style={{ color: P.muted, fontSize: 12, marginTop: 2 }}>
+          {/* <Text style={{ color: P.muted, fontSize: 12, marginTop: 2 }}>
             {tr('Packaging units used for product creation and batch intake.', 'ឯកតាកញ្ចប់សម្រាប់បង្កើតទំនិញ និងនាំចូលស្តុក។')}
-          </Text>
+          </Text> */}
         </View>
         <Press
           onPress={() => onCreate()}

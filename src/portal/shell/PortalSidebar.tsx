@@ -134,7 +134,9 @@ export function PortalSidebar({ portal }: { portal: PortalController }) {
         >
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = tab === item.id;
+            const active =
+              tab === item.id ||
+              ((tab === 'product-form' || tab === 'batch-intake') && item.id === 'inventory');
             return (
               <Press
                 key={item.id}

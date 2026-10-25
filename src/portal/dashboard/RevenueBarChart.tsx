@@ -30,9 +30,9 @@ export function RevenueBarChart({
           <Text style={{ color: P.text, fontSize: 15.5, fontWeight: '800', letterSpacing: -0.3 }}>
             {tr('7-Day Revenue Performance (KHR ៛)', 'ចំណូលប្រចាំថ្ងៃរយៈពេល ៧ ថ្ងៃ (៛)')}
           </Text>
-          <Text style={{ color: P.muted, fontSize: 11.5, marginTop: 3 }}>
+          {/* <Text style={{ color: P.muted, fontSize: 11.5, marginTop: 3 }}>
             {tr('Rounded to 100 ៛ Khmer Riel denominations', 'គណនាជាប្រាក់រៀល មូលដ្ឋាន ១០០ ៛')}
-          </Text>
+          </Text> */}
         </View>
         <Press
           onPress={onViewAll}

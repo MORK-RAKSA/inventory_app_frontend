@@ -244,7 +244,7 @@ export default function Root() {
         body: JSON.stringify({
           username: forgotUser.trim(),
           newPassword: forgotNewPass.trim(),
-          recoveryKey: forgotPin.trim() || 'admin1234',
+          recoveryKey: forgotPin.trim(),
         }),
       });
       if (!res.ok) {
@@ -501,7 +501,7 @@ export default function Root() {
                         }}
                       />
                       <TextInput
-                        placeholder="Recovery PIN (default: admin1234 or 8888)"
+                        placeholder="Master Recovery Key / PIN"
                         placeholderTextColor="#9CA3AF"
                         value={forgotPin}
                         onChangeText={setForgotPin}
@@ -593,106 +593,6 @@ export default function Root() {
                       )}
                     </Press>
                   </Rise>
-
-                  <View style={{flexDirection: 'row', justifyContent: 'flex-end', marginTop: -8, marginBottom: 16}}>
-                    <Press onPress={() => setShowForgot((prev) => !prev)}>
-                      <Text style={{color: C.primary, fontSize: 12.5, fontWeight: '700'}}>
-                        {showForgot ? 'Back to sign in' : 'Forgot password?'}
-                      </Text>
-                    </Press>
-                  </View>
-
-                  {showForgot && (
-                    <View
-                      style={{
-                        backgroundColor: '#FFFBEB',
-                        borderRadius: R.md,
-                        padding: 16,
-                        marginBottom: 16,
-                        borderWidth: 1,
-                        borderColor: '#FDE68A',
-                        gap: 10,
-                      }}
-                    >
-                      <Text style={{color: '#92400E', fontSize: 13, fontWeight: '800'}}>
-                        Reset Account Password
-                      </Text>
-                      <TextInput
-                        placeholder="Your username (e.g. admin)"
-                        placeholderTextColor="#9CA3AF"
-                        value={forgotUser}
-                        onChangeText={setForgotUser}
-                        autoCapitalize="none"
-                        style={{
-                          height: 40,
-                          borderWidth: 1,
-                          borderColor: '#FCD34D',
-                          borderRadius: 8,
-                          paddingHorizontal: 10,
-                          fontSize: 13,
-                          backgroundColor: '#FFFFFF',
-                          color: C.text,
-                        }}
-                      />
-                      <TextInput
-                        placeholder="New password"
-                        placeholderTextColor="#9CA3AF"
-                        value={forgotNewPass}
-                        onChangeText={setForgotNewPass}
-                        secureTextEntry
-                        style={{
-                          height: 40,
-                          borderWidth: 1,
-                          borderColor: '#FCD34D',
-                          borderRadius: 8,
-                          paddingHorizontal: 10,
-                          fontSize: 13,
-                          backgroundColor: '#FFFFFF',
-                          color: C.text,
-                        }}
-                      />
-                      <TextInput
-                        placeholder="Recovery PIN (default: admin1234 or 8888)"
-                        placeholderTextColor="#9CA3AF"
-                        value={forgotPin}
-                        onChangeText={setForgotPin}
-                        style={{
-                          height: 40,
-                          borderWidth: 1,
-                          borderColor: '#FCD34D',
-                          borderRadius: 8,
-                          paddingHorizontal: 10,
-                          fontSize: 13,
-                          backgroundColor: '#FFFFFF',
-                          color: C.text,
-                        }}
-                      />
-                      {forgotMsg ? (
-                        <Text style={{color: forgotMsg.includes('reset!') ? '#059669' : '#DC2626', fontSize: 12, fontWeight: '700'}}>
-                          {forgotMsg}
-                        </Text>
-                      ) : null}
-                      <Press
-                        disabled={forgotLoading}
-                        onPress={handleForgotPassword}
-                        style={{
-                          height: 40,
-                          backgroundColor: '#D97706',
-                          borderRadius: 8,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {forgotLoading ? (
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                        ) : (
-                          <Text style={{color: '#FFFFFF', fontSize: 13, fontWeight: '800'}}>
-                            Reset & Apply Password
-                          </Text>
-                        )}
-                      </Press>
-                    </View>
-                  )}
                 </Animated.View>
               </Rise>
 

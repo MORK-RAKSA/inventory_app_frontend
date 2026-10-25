@@ -30,7 +30,7 @@ export function UomTableHeader({ tr }: { tr: PortalController['tr'] }) {
         {tr('Master Packaging (UOM)', 'ឯកតាកញ្ចប់ធំ (UOM)')}
       </Text>
       <Text style={{ ...cell, flex: UOM_COL.wholesalePrice }}>
-        {tr('Wholesale Case Price', 'ថ្លៃលក់ដុំក្នុងមួយកេស')}
+        {tr('Wholesale Price', 'ថ្លៃលក់ដុំ')}
       </Text>
       <Text style={{ ...cell, flex: UOM_COL.savings }}>{tr('Unit Savings', 'ចំណេញ / ឯកតា')}</Text>
       <Text style={{ ...cell, flex: UOM_COL.stock }}>{tr('Current Stock', 'ស្តុកបច្ចុប្បន្ន')}</Text>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, useWindowDimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Boxes,
   Layers,
@@ -16,6 +17,7 @@ import { useToast } from '../toast';
 import { useSounds } from '../hooks/useSounds';
 import { exportExcel } from '../exportExcel';
 import { lookupBarcodeOnline } from '../barcodeLookup';
+import { fetchUsdKhrRate, ExchangeRateQuote, loadLastRateQuote } from '../exchangeRate';
 import {
   getLiveActivityLog,
   markEventNotified,
@@ -64,8 +66,8 @@ export function usePortalController() {
   const [formBarcode, setFormBarcode] = useState('');
   const [formCategory, setFormCategory] = useState('General');
   const [formCcy, setFormCcy] = useState<'KHR' | 'USD'>('KHR');
-  const [formPrice, setFormPrice] = useState('4100');
-  const [formStock, setFormStock] = useState('20');
+  const [formPrice, setFormPrice] = useState('');
+  const [formStock, setFormStock] = useState('');
   const [formLowThreshold, setFormLowThreshold] = useState('5');
   const [formExpiry, setFormExpiry] = useState('');
   const [formWholesaleEnabled, setFormWholesaleEnabled] = useState(false);
@@ -105,11 +107,8 @@ export function usePortalController() {
       uomConfigId: string;
       wholesalePrice: string;
     }>
-  >([
-    { id: 'row-1', barcode: '', name: '', category: 'General', ccy: 'KHR', price: '4000', stock: '24', uomConfigId: 'uom-case-24', wholesalePrice: '80000' },
-    { id: 'row-2', barcode: '', name: '', category: 'General', ccy: 'KHR', price: '4000', stock: '24', uomConfigId: 'uom-case-24', wholesalePrice: '80000' },
-    { id: 'row-3', barcode: '', name: '', category: 'General', ccy: 'KHR', price: '4000', stock: '24', uomConfigId: 'uom-case-24', wholesalePrice: '80000' },
-  ]);
+  >([]);
+  const [returnToBatchAfterUom, setReturnToBatchAfterUom] = useState(false);
   const [batchRowUomTargetId, setBatchRowUomTargetId] = useState<string | null>(null);
 
   // POS state
@@ -129,6 +128,62 @@ export function usePortalController() {
   // Settings state
   const [rateInput, setRateInput] = useState('4100');
   const [savingRate, setSavingRate] = useState(false);
+  const [currencyMode, setCurrencyMode] = useState<'live' | 'manual'>('manual');
+  const [fetchingLiveRate, setFetchingLiveRate] = useState(false);
+  /** Latest quote keeps its provenance so the UI can show where the rate came from. */
+  const [liveRateQuote, setLiveRateQuote] = useState<ExchangeRateQuote | null>(null);
+
+  useEffect(() => {
+    void loadLastRateQuote().then((q) => { if (q) setLiveRateQuote(q); });
+    AsyncStorage.getItem('retailflow_currency_mode').then((saved) => {
+      if (saved === 'live' || saved === 'manual') setCurrencyMode(saved as 'live' | 'manual');
+      if (saved === 'live') {
+        void fetchLiveExchangeRate();
+      }
+    }).catch(() => {});
+  }, []);
+
+  const fetchLiveExchangeRate = useCallback(async () => {
+    setFetchingLiveRate(true);
+    try {
+      // Official National Bank of Cambodia rate first, market feed only as a fallback.
+      const quote = await fetchUsdKhrRate();
+      const rounded = roundKhr(quote.khrPerUsd);
+      setLiveRateQuote(quote);
+      setRate(rounded);
+      setRateInput(String(rounded));
+      await api<Settings>('/settings/rate', {
+        method: 'PUT',
+        body: JSON.stringify({ usdToKhr: rounded }),
+      });
+      playScan();
+      toast.show(
+        tr(
+          `${quote.sourceName}: 1 USD = ${khr(rounded)}`,
+          `អត្រាផ្លូវការ ${quote.sourceName}៖ 1 USD = ${khr(rounded)}`
+        ),
+        {
+          title: quote.isFallback
+            ? tr('Market rate synced (fallback)', 'ប្រើអត្រាទីផ្សារ (បម្រុង)')
+            : tr('Official NBC rate synced', 'អត្រាផ្លូវការ NBC ត្រូវបានទាញ'),
+          tone: 'success',
+        }
+      );
+    } catch (err: any) {
+      playFail();
+      toast.show(err?.message || 'Failed to sync live rate', { tone: 'error' });
+    } finally {
+      setFetchingLiveRate(false);
+    }
+  }, [playScan, playFail, toast, tr]);
+
+  const toggleCurrencyMode = useCallback(async (newMode: 'live' | 'manual') => {
+    setCurrencyMode(newMode);
+    await AsyncStorage.setItem('retailflow_currency_mode', newMode).catch(() => {});
+    if (newMode === 'live') {
+      void fetchLiveExchangeRate();
+    }
+  }, [fetchLiveExchangeRate]);
 
   // Live Activity Feed state
   const [activityTick, setActivityTick] = useState(0);
@@ -331,20 +386,21 @@ export function usePortalController() {
     setFormBarcode(clean);
     setFormCategory('General');
     setFormCcy('KHR');
-    setFormPrice('4100');
-    setFormStock('20');
+    setFormPrice('');
+    setFormStock('');
     setFormLowThreshold('5');
     setFormExpiry('');
     setFormWholesaleEnabled(false);
     setFormWholesaleCcy('KHR');
     setFormWholesalePrice('');
     const defUom = uomConfigs[0] || DEFAULT_UOM_CONFIGS[0];
-    setSelectedUomConfigId(defUom.id);
-    setFormBaseUnit(defUom.baseUnit);
-    setFormCaseUnitName(defUom.caseUnitName);
-    setFormCaseQty(String(defUom.caseQty));
+    setSelectedUomConfigId(defUom?.id || 'uom-case-24');
+    setFormBaseUnit(defUom?.baseUnit || 'Can');
+    setFormCaseUnitName(defUom?.caseUnitName || 'Case');
+    setFormCaseQty(String(defUom?.caseQty || 24));
     setFormWholesaleMinQty('1');
-    setShowProductModal(true);
+    setShowProductModal(false);
+    setTab('product-form');
     if (clean) {
       void lookupBarcodeOnline(clean, { allowFallback: true }).then((info) => {
         if (info?.name) {
@@ -356,6 +412,10 @@ export function usePortalController() {
   }
 
   function openCreateUomModal(existing?: UomConfig) {
+    if (showBatchModal) {
+      setShowBatchModal(false);
+      setReturnToBatchAfterUom(true);
+    }
     if (existing) {
       setEditingUomConfig(existing);
       setUomFormName(existing.name);
@@ -372,6 +432,14 @@ export function usePortalController() {
       setUomFormDescription('');
     }
     setShowUomModal(true);
+  }
+
+  function closeUomModal() {
+    setShowUomModal(false);
+    if (returnToBatchAfterUom) {
+      setShowBatchModal(true);
+      setReturnToBatchAfterUom(false);
+    }
   }
 
   async function saveUomConfigAction() {
@@ -426,6 +494,10 @@ export function usePortalController() {
         });
       }
       setShowUomModal(false);
+      if (returnToBatchAfterUom) {
+        setShowBatchModal(true);
+        setReturnToBatchAfterUom(false);
+      }
       playScan();
     } catch (e: any) {
       playFail();
@@ -470,12 +542,8 @@ export function usePortalController() {
   }
 
   function openBatchModal() {
-    setBatchRows([
-      { id: `row-${Date.now()}-1`, barcode: '', name: '', category: 'General', ccy: 'KHR', price: '4000', stock: '24', uomConfigId: 'uom-case-24', wholesalePrice: '80000' },
-      { id: `row-${Date.now()}-2`, barcode: '', name: '', category: 'General', ccy: 'KHR', price: '4000', stock: '24', uomConfigId: 'uom-case-24', wholesalePrice: '80000' },
-      { id: `row-${Date.now()}-3`, barcode: '', name: '', category: 'General', ccy: 'KHR', price: '4000', stock: '24', uomConfigId: 'uom-case-24', wholesalePrice: '80000' },
-    ]);
-    setShowBatchModal(true);
+    setShowBatchModal(false);
+    setTab('batch-intake');
   }
 
   async function commitBatchAction() {
@@ -535,6 +603,8 @@ export function usePortalController() {
         { title: tr('Batch committed', 'បានបញ្ចូលបាច់'), tone: 'success' }
       );
       setShowBatchModal(false);
+      setBatchRows([]);
+      setTab('inventory');
       void loadAll(false);
     } catch (e: any) {
       playFail();
@@ -555,7 +625,7 @@ export function usePortalController() {
     setFormCaseQty('24');
     setFormWholesaleMinQty('1');
     setFormWholesaleCcy('KHR');
-    setFormWholesalePrice('82000');
+    setFormWholesalePrice('');
   }
 
   function openEditProduct(p: Product) {
@@ -563,15 +633,28 @@ export function usePortalController() {
     setFormName(p.name);
     setFormBarcode(p.barcode || '');
     setFormCategory(p.category || 'General');
-    setFormCcy('KHR');
-    setFormPrice(String(roundKhr(p.priceUsd * rate)));
+    const ccy = p.originalCcy === 'USD' ? 'USD' : 'KHR';
+    setFormCcy(ccy);
+    setFormPrice(
+      p.originalPrice !== undefined && p.originalPrice !== null && p.originalPrice > 0
+        ? String(p.originalPrice)
+        : String(ccy === 'USD' ? p.priceUsd : roundKhr(p.priceUsd * rate))
+    );
     setFormStock(String(p.stock));
     setFormLowThreshold(String(p.lowStockThreshold ?? 5));
     setFormExpiry(p.expirationDate || '');
     const hasWh = Boolean(p.wholesalePriceUsd && p.wholesalePriceUsd > 0);
     setFormWholesaleEnabled(hasWh);
-    setFormWholesaleCcy('KHR');
-    setFormWholesalePrice(hasWh ? String(roundKhr(Number(p.wholesalePriceUsd) * rate)) : '');
+    setFormWholesaleCcy(ccy);
+    setFormWholesalePrice(
+      hasWh
+        ? String(
+            ccy === 'USD'
+              ? Number(p.wholesalePriceUsd).toFixed(2)
+              : roundKhr(Number(p.wholesalePriceUsd) * rate)
+          )
+        : ''
+    );
     setFormBaseUnit(p.baseUnit || 'Piece');
     setFormCaseUnitName(p.caseUnitName || 'Case');
     setFormCaseQty(String(p.caseQty || 24));
@@ -582,13 +665,14 @@ export function usePortalController() {
           u.caseQty === (p.caseQty || 24) ||
           (p.caseUnitName && u.caseUnitName.toLowerCase() === p.caseUnitName.toLowerCase())
       ) || uomConfigs[0] || DEFAULT_UOM_CONFIGS[0];
-    setSelectedUomConfigId(matchingUom.id);
-    setShowProductModal(true);
+    setSelectedUomConfigId(matchingUom?.id || 'uom-case-24');
+    setShowProductModal(false);
+    setTab('product-form');
   }
 
   // Handle Barcode from Connected Hardware USB / Bluetooth Scanner Device
   const handleHardwareBarcodeScan = useCallback(
-    async (rawCode: string) => {
+    async (rawCode: string, forceBatch: boolean = false) => {
       const code = rawCode.trim();
       if (!code) return;
 
@@ -596,43 +680,67 @@ export function usePortalController() {
       setScannerFlash(true);
       setTimeout(() => setScannerFlash(false), 1200);
 
-      // 0. If the Batch Intake modal is open, fill into the batch table
-      if (showBatchModal) {
+      // 0. If on Batch Intake page or modal, or forceBatch, fill into the batch pending list
+      if (forceBatch || showBatchModal || tab === 'batch-intake') {
         playScan();
+        const existing = products.find(
+          (p) => String(p.barcode || '').toLowerCase() === code.toLowerCase()
+        );
         setBatchRows((prev) => {
+          const inBatchIdx = prev.findIndex(
+            (r) => r.barcode.trim().toLowerCase() === code.toLowerCase()
+          );
+          if (inBatchIdx !== -1) {
+            return prev.map((r, i) =>
+              i === inBatchIdx ? { ...r, stock: String((parseInt(r.stock, 10) || 0) + 1) } : r
+            );
+          }
           const emptyIdx = prev.findIndex((r) => !r.barcode.trim());
           const targetIdx = emptyIdx !== -1 ? emptyIdx : prev.length;
           const updated = [...prev];
+          const newRowItem = {
+            id: `row-${Date.now()}`,
+            barcode: code,
+            name: existing?.name || '',
+            category: existing?.category || 'General',
+            ccy: 'KHR' as const,
+            price: existing ? String(roundKhr(existing.priceUsd * rate)) : '',
+            stock: '1',
+            uomConfigId: selectedUomConfigId || 'uom-case-24',
+            wholesalePrice: existing?.wholesalePriceUsd
+              ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 24) * rate))
+              : '',
+          };
           if (emptyIdx === -1) {
-            updated.push({
-              id: `row-${Date.now()}`,
-              barcode: code,
-              name: '',
-              category: 'General',
-              ccy: 'KHR',
-              price: '4000',
-              stock: '24',
-              uomConfigId: selectedUomConfigId || 'uom-case-24',
-              wholesalePrice: '80000',
-            });
+            updated.push(newRowItem);
           } else {
-            updated[emptyIdx] = { ...updated[emptyIdx], barcode: code };
+            updated[emptyIdx] = newRowItem;
           }
-          void lookupBarcodeOnline(code).then((info) => {
-            if (info?.name) {
-              setBatchRows((curr) =>
-                curr.map((r, i) =>
-                  i === targetIdx ? { ...r, name: info.name, category: info.category || r.category } : r
-                )
-              );
-            }
-          });
+          if (!existing) {
+            void lookupBarcodeOnline(code).then((info) => {
+              if (info?.name) {
+                setBatchRows((curr) =>
+                  curr.map((r, i) =>
+                    i === targetIdx
+                      ? { ...r, name: info.name, category: info.category || r.category }
+                      : r
+                  )
+                );
+              }
+            });
+          }
           return updated;
         });
-        toast.show(tr(`Barcode ${code} added to batch row`, `បាកូដ ${code} បានបញ្ចូលក្នុងតារាងបាច់`), {
-          title: tr('Barcode scanned', 'បានស្កេនបាកូដ'),
-          tone: 'info',
-        });
+        toast.show(
+          tr(
+            existing ? `Scanned: ${existing.name} (+1)` : `Scanned: ${code}`,
+            existing ? `បានស្កេន៖ ${existing.name} (+1)` : `បានស្កេន៖ ${code}`
+          ),
+          {
+            title: tr('Barcode scanned', 'បានស្កេនបាកូដ'),
+            tone: 'info',
+          }
+        );
         return;
       }
 
@@ -745,52 +853,184 @@ export function usePortalController() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [handleHardwareBarcodeScan]);
 
+  // Configured Base Units & Categories (Editable from Portal Settings / Form Dropdowns)
+  const [configuredBaseUnits, setConfiguredBaseUnits] = useState<string[]>([
+    'Can', 'Bottle', 'Piece', 'Box', 'Pack', 'Kg', 'Litre', 'Roll', 'Cup', 'Bag'
+  ]);
+  const [configuredCategories, setConfiguredCategories] = useState<string[]>([
+    'General', 'Beverages', 'Food & Snacks', 'Groceries', 'Household', 'Personal Care', 'Dairy', 'Bakery'
+  ]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedUnits, savedCats] = await Promise.all([
+          AsyncStorage.getItem('retailflow_configured_base_units'),
+          AsyncStorage.getItem('retailflow_configured_categories'),
+        ]);
+        if (savedUnits) {
+          const parsed = JSON.parse(savedUnits);
+          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredBaseUnits(parsed);
+        }
+        if (savedCats) {
+          const parsed = JSON.parse(savedCats);
+          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredCategories(parsed);
+        }
+      } catch (_) {}
+    })();
+  }, []);
+
+  const addConfiguredBaseUnit = (unit: string) => {
+    const clean = unit.trim();
+    if (!clean) return;
+    setConfiguredBaseUnits((prev) => {
+      if (prev.some((u) => u.toLowerCase() === clean.toLowerCase())) return prev;
+      const next = [...prev, clean];
+      AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+    toast.show(tr(`Added base unit: ${clean}`, `បានបន្ថែមឯកតាមូលដ្ឋាន៖ ${clean}`), { tone: 'success' });
+  };
+
+  const removeConfiguredBaseUnit = (unit: string) => {
+    setConfiguredBaseUnits((prev) => {
+      const next = prev.filter((u) => u.toLowerCase() !== unit.toLowerCase());
+      AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  };
+
+  const addConfiguredCategory = (cat: string) => {
+    const clean = cat.trim();
+    if (!clean) return;
+    setConfiguredCategories((prev) => {
+      if (prev.some((c) => c.toLowerCase() === clean.toLowerCase())) return prev;
+      const next = [...prev, clean];
+      AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+    toast.show(tr(`Added category: ${clean}`, `បានបន្ថែមក្រុមទំនិញ៖ ${clean}`), { tone: 'success' });
+  };
+
+  const removeConfiguredCategory = (cat: string) => {
+    setConfiguredCategories((prev) => {
+      const next = prev.filter((c) => c.toLowerCase() !== cat.toLowerCase());
+      AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  };
+
   // Wireless Mobile Scanner Gun Listener
   useEffect(() => {
     return onRemoteScannerScan((barcode, scanMode) => {
+      // 1. Mode switch signal from mobile app - immediately update portal view
+      if (barcode === '__SWITCH_MODE__') {
+        if (scanMode === 'checkout' || scanMode === 'pos') setTab('pos');
+        else if (scanMode === 'find' || scanMode === 'inventory') setTab('inventory');
+        else if (scanMode === 'create' || scanMode === 'single') setTab('product-form');
+        else if (scanMode === 'batch') setTab('batch-intake');
+        return;
+      }
+
       setLastScannedCode(barcode);
       setScannerFlash(true);
       setTimeout(() => setScannerFlash(false), 1200);
 
-      if (scanMode === 'batch') {
-        if (!showBatchModal) {
-          setShowBatchModal(true);
+      // 2. Batch Mode: switch to batch-intake and queue into pending list
+      if (scanMode === 'batch' || tab === 'batch-intake') {
+        if (tab !== 'batch-intake') {
+          setTab('batch-intake');
         }
-        handleHardwareBarcodeScan(barcode);
+        handleHardwareBarcodeScan(barcode, true);
         return;
       }
 
-      if (scanMode === 'inventory') {
+      // 3. Find / Inventory Mode: switch to inventory tab and locate item
+      if (scanMode === 'find' || scanMode === 'inventory') {
+        if (tab !== 'inventory') setTab('inventory');
+        setInvSearch(barcode);
         const found = products.find((p) => (p.barcode || '').toLowerCase() === barcode.toLowerCase());
         if (found) {
           playScan();
           openEditProduct(found);
           toast.show(
-            tr(`Mobile Scanner: found ${found.name}`, `ម៉ាស៊ីនស្កេនទូរស័ព្ទ៖ រកឃើញ ${found.name}`),
-            { title: tr('Scanner gun connected', 'ម៉ាស៊ីនស្កេន'), tone: 'success' }
+            tr(`Found: ${found.name}`, `រកឃើញ៖ ${found.name}`),
+            { title: tr('Scanner found product', 'រកឃើញទំនិញ'), tone: 'success' }
           );
+        } else {
+          playFail();
+          toast.show(
+            tr(`No product found for barcode ${barcode}`, `រកមិនឃើញទំនិញបាកូដ ${barcode}`),
+            { title: tr('Barcode not in catalog', 'មិនមានក្នុងបញ្ជី'), tone: 'warning' }
+          );
+        }
+        return;
+      }
+
+      // 4. Create Single Product Mode: switch to product-form with barcode
+      if (scanMode === 'create' || scanMode === 'single') {
+        setTab('product-form');
+        const found = products.find((p) => (p.barcode || '').toLowerCase() === barcode.toLowerCase());
+        if (found) {
+          playScan();
+          openEditProduct(found);
         } else {
           playScan();
           openCreateProduct(barcode);
+        }
+        return;
+      }
+
+      // 5. Checkout / POS Mode: switch to pos tab and add to checkout cart
+      if (scanMode === 'checkout' || scanMode === 'pos' || tab === 'pos') {
+        if (tab !== 'pos') setTab('pos');
+        const found = products.find((p) => (p.barcode || '').toLowerCase() === barcode.toLowerCase());
+        if (found) {
+          playScan();
+          addToCart(found, 1);
           toast.show(
-            tr(`Mobile Scanner: new barcode ${barcode}`, `ម៉ាស៊ីនស្កេនទូរស័ព្ទ៖ បាកូដថ្មី ${barcode}`),
-            { title: tr('New barcode scanned', 'បានស្កេនបាកូដថ្មី'), tone: 'info' }
+            tr(`Scanned: ${found.name} (${khr(found.priceUsd * rate)})`, `បានស្កេន៖ ${found.name} (${khr(found.priceUsd * rate)})`),
+            { title: tr('Added to Cart', 'បានបញ្ចូលក្នុងកន្ត្រក'), tone: 'success' }
+          );
+        } else {
+          playFail();
+          toast.show(
+            tr(`Barcode not in stock: ${barcode}`, `រកមិនឃើញបាកូដ៖ ${barcode}`),
+            {
+              title: tr('Unknown barcode', 'មិនស្គាល់បាកូដ'),
+              tone: 'warning',
+              actionLabel: tr('Add Item', 'បន្ថែមទំនិញ'),
+              onAction: () => openCreateProduct(barcode),
+            }
           );
         }
-      } else {
-        handleHardwareBarcodeScan(barcode);
+        return;
       }
+
+      handleHardwareBarcodeScan(barcode);
     });
-  }, [handleHardwareBarcodeScan, products, tr, toast, playScan]);
+  }, [handleHardwareBarcodeScan, products, tab, rate, tr, toast, playScan, playFail, addToCart, openEditProduct, openCreateProduct]);
 
   // Computed metrics
   const categories = useMemo(() => {
-    const set = new Set<string>(DEFAULT_CATEGORIES);
+    const set = new Set<string>(configuredCategories);
     products.forEach((p) => {
       if (p.category?.trim()) set.add(p.category.trim());
     });
     return ['All', ...Array.from(set)];
-  }, [products]);
+  }, [configuredCategories, products]);
+
+  const availableBaseUnits = useMemo(() => {
+    const set = new Set<string>(configuredBaseUnits);
+    uomConfigs.forEach((u) => {
+      if (u.baseUnit?.trim()) set.add(u.baseUnit.trim());
+    });
+    products.forEach((p) => {
+      if (p.baseUnit?.trim()) set.add(p.baseUnit.trim());
+    });
+    if (formBaseUnit?.trim()) set.add(formBaseUnit.trim());
+    return Array.from(set);
+  }, [configuredBaseUnits, uomConfigs, products, formBaseUnit]);
 
   const activeSales = useMemo(() => sales.filter((s) => s.status !== 'ARCHIVED'), [sales]);
 
@@ -1132,11 +1372,23 @@ export function usePortalController() {
         stock: qty,
         lowStockThreshold: limit,
         expirationDate: formExpiry.trim() || null,
+        wholesalePrice:
+          wholesaleUsdVal !== null
+            ? (formCcy === 'KHR'
+                ? roundKhr(wholesaleUsdVal * rate)
+                : Number(wholesaleUsdVal.toFixed(2)))
+            : null,
         wholesalePriceUsd: wholesaleUsdVal,
         wholesaleMinQty: Math.max(1, parseInt(formWholesaleMinQty, 10) || 1),
         baseUnit: formBaseUnit.trim() || 'Piece',
         caseUnitName: formCaseUnitName.trim() || 'Case',
         caseQty: caseQuantity,
+        wholesalePricePerCase:
+          wholesalePricePerCase !== null
+            ? (formCcy === 'KHR'
+                ? roundKhr(wholesalePricePerCase * rate)
+                : Number(wholesalePricePerCase.toFixed(2)))
+            : null,
         wholesalePricePerCaseUsd: wholesalePricePerCase,
       };
       const result = await api<Product>(
@@ -1165,6 +1417,7 @@ export function usePortalController() {
         }
       );
       setShowProductModal(false);
+      setTab('inventory');
       await loadAll(true);
     } catch (e: any) {
       playFail();
@@ -1295,7 +1548,7 @@ export function usePortalController() {
     }
   }
 
-  async function resetPasswordAction(username: string, newPassword: string, recoveryKey = 'admin1234') {
+  async function resetPasswordAction(username: string, newPassword: string, recoveryKey = '') {
     try {
       await api('/auth/reset-password', {
         method: 'POST',
@@ -1466,6 +1719,7 @@ export function usePortalController() {
     addWholesaleItem,
     openCreateProduct,
     openCreateUomModal,
+    closeUomModal,
     saveUomConfigAction,
     openUomConfigForRow,
     deleteUomConfigAction,
@@ -1476,6 +1730,13 @@ export function usePortalController() {
     openEditProduct,
     handleHardwareBarcodeScan,
     categories,
+    availableBaseUnits,
+    configuredBaseUnits,
+    configuredCategories,
+    addConfiguredBaseUnit,
+    removeConfiguredBaseUnit,
+    addConfiguredCategory,
+    removeConfiguredCategory,
     activeSales,
     todaySales,
     todayKhr,
@@ -1509,6 +1770,11 @@ export function usePortalController() {
     quickRestock,
     archiveProduct,
     saveExchangeRate,
+    currencyMode,
+    fetchingLiveRate,
+    liveRateQuote,
+    fetchLiveExchangeRate,
+    toggleCurrencyMode,
     usersList,
     createUserAction,
     deleteUserAction,

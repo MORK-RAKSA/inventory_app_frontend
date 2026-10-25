@@ -133,37 +133,8 @@ async function request(path: string, body: object) {
   return r.json() as Promise<Tokens>;
 }
 export async function login(username: string, password: string) {
-  try {
-    const result = await request("/auth/login", { username, password });
-    await store(result);
-  } catch (err: any) {
-    // If backend is unavailable or returning 502 Bad Gateway, provide an offline fallback
-    // session so the user is never locked out of the web portal or mobile app.
-    const u = username.trim().toLowerCase();
-    const isLocalAllowed =
-      (u === "admin" && (password === "password" || password === "admin1234" || password === "admin")) ||
-      (u === "morkraksa" && (password === "admin1234" || password === "password")) ||
-      // Or any non-empty credentials if server is returning 502/connect errors:
-      (u.length > 0 &&
-        password.length > 0 &&
-        (String(err?.message || "").includes("502") ||
-          String(err?.message || "").includes("connect") ||
-          String(err?.message || "").includes("Load failed")));
-
-    if (isLocalAllowed) {
-      const offlineSession: Tokens = {
-        accessToken: `offline-token-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        refreshToken: `offline-refresh-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        expiresIn: 86400 * 90,
-        username: username.trim(),
-        role: "ADMIN",
-        fullName: u === "admin" ? "System Administrator" : "Mork Raksa",
-      };
-      await store(offlineSession);
-      return;
-    }
-    throw err;
-  }
+  const result = await request("/auth/login", { username, password });
+  await store(result);
 }
 export async function restore() {
   try {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Text, View, TextInput, Platform, Alert, ScrollView } from 'react-native';
-import { useKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { CameraView, useCameraPermissions, BarcodeType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, {
@@ -38,7 +38,9 @@ import {
   getWebBarcodeDetector,
   decodeBarcodeFromImageUri,
 } from '../webBarcodeScanner';
-import { canonicalBarcode, isLikelyMisread } from '../barcode';
+import { canonicalBarcode } from '../barcode';
+import { validateBarcodeRead } from '../barcodeScannerValidation';
+import { createScanGate, isDuplicateScan, rememberScan } from '../scanGate';
 
 const ALL_BARCODE_TYPES: BarcodeType[] = [
   'ean13',
@@ -129,6 +131,8 @@ export function CameraScanner({
   const [failReason, setFailReason] = useState('');
   const last = useRef({ code: '', at: 0 });
   const pendingRead = useRef({ code: '', n: 0, at: 0 });
+  /** Closed while the same barcode stays in the viewfinder so one item is only counted once. */
+  const latch = useRef(createScanGate());
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { tr } = useLanguage();
 
@@ -171,7 +175,7 @@ export function CameraScanner({
   const flash = useSharedValue(0);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || Platform.OS === 'web') return;
     sweep.value = withRepeat(
       withTiming(1, {
         duration: isCheckout ? 1150 : 1300,
@@ -180,6 +184,11 @@ export function CameraScanner({
       -1,
       true,
     );
+    // Keep the screen awake while the scanner is open (native only).
+    activateKeepAwakeAsync('scanner-active').catch(() => {});
+    return () => {
+      deactivateKeepAwake('scanner-active').catch(() => {});
+    };
   }, [visible, isCheckout]);
 
   const line = useAnimatedStyle(() => ({
@@ -250,31 +259,43 @@ export function CameraScanner({
       );
       bannerTimer.current = setTimeout(() => {
         setBannerState('idle');
-      }, 720);
+      }, 1000);
     }
   }
 
   /**
    * Entry point for every camera / detector read.
    * - Rejects EAN/UPC reads whose check digit is wrong (misreads produce a *different* product ID).
-   * - Requires the same code twice in a row so a single blurry frame can never create a wrong item.
-   * Manual entry bypasses both checks.
+   * - GTIN symbologies (EAN-8/13, UPC-A, ITF-14) are accepted on the FIRST frame because their check
+   *   digit already proves the read is intact. Other symbologies need two matching frames.
+   * - The latch stops the same physical barcode from being counted again while it stays in frame.
    */
   function cameraRead(raw: string, type?: string) {
     const value = raw.trim();
     if (!value) return;
-    if (isLikelyMisread(value, type)) return;
+    const validated = validateBarcodeRead(value, type, 'camera');
+    if (!validated.ok) return;
+
+    // Canonical form (UPC-A → EAN-13) so the latch matches every frame of the same physical code.
+    const cleanCode = canonicalBarcode(validated.code);
     const now = Date.now();
+
+    // Still looking at the barcode we already accepted → ignore every further frame.
+    if (isDuplicateScan(latch.current, cleanCode, now)) return;
+
     const p = pendingRead.current;
-    if (p.code === value && now - p.at < 1500) {
+    if (p.code === cleanCode && now - p.at < 900) {
       p.n += 1;
       p.at = now;
     } else {
-      pendingRead.current = { code: value, n: 1, at: now };
+      pendingRead.current = { code: cleanCode, n: 1, at: now };
     }
-    if (pendingRead.current.n >= 2) {
+    // Verified check digit = instant success; unverified formats still need a second frame.
+    const needed = validated.checksumVerified ? 1 : 2;
+    if (pendingRead.current.n >= needed) {
       pendingRead.current = { code: '', n: 0, at: 0 };
-      void scanned(value);
+      rememberScan(latch.current, cleanCode, now);
+      void scanned(cleanCode);
     }
   }
 
@@ -282,11 +303,12 @@ export function CameraScanner({
     const value = canonicalBarcode(raw);
     if (!value) return;
     const now = Date.now();
-    // Controlled pace: 1350ms cooldown for the same barcode, 850ms minimum between any two scans
-    const minGap = last.current.code === value ? 1350 : 850;
-    if (now - last.current.at < minGap) return;
+    // Safety net for a duplicated event inside one frame batch (the latch handles the rest).
+    if (last.current.code === value && now - last.current.at < 120) return;
 
     last.current = { code: value, at: now };
+    // Also latch direct entry points (Snap / Image) so the camera loop cannot count the same item.
+    rememberScan(latch.current, value, now);
     const qty = getActiveQty();
 
     try {
@@ -441,7 +463,7 @@ export function CameraScanner({
         {/* Header */}
         <View
           style={{
-            paddingTop: Platform.OS === 'ios' ? 50 : 38,
+            paddingTop: 50,
             paddingHorizontal: 18,
             paddingBottom: 10,
             flexDirection: 'row',

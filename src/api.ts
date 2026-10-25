@@ -35,8 +35,12 @@ export interface UomConfig {
   createdAt?: number;
 }
 
-// Dynamic UOM configs are loaded from the database directly; no static presets.
-export const DEFAULT_UOM_CONFIGS: UomConfig[] = [];
+export const DEFAULT_UOM_CONFIGS: UomConfig[] = [
+  { id: 'uom-case-24', name: 'Case of 24', baseUnit: 'Can', caseUnitName: 'Case', caseQty: 24, description: 'Standard 24-can beverage or grocery case' },
+  { id: 'uom-case-12', name: 'Case of 12', baseUnit: 'Bottle', caseUnitName: 'Case', caseQty: 12, description: '12-bottle beverage, oil, or sauce case' },
+  { id: 'uom-pack-6', name: 'Pack of 6', baseUnit: 'Can', caseUnitName: 'Pack', caseQty: 6, description: '6-can or 6-bottle shrink-wrap pack' },
+  { id: 'uom-box-1', name: 'Box of 1', baseUnit: 'Piece', caseUnitName: 'Box', caseQty: 1, description: 'Single boxed retail piece' },
+];
 
 export interface AppUser {
   id: string;

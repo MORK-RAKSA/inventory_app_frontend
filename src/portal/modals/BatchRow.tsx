@@ -94,7 +94,7 @@ export function BatchRow({
         <TextInput
           value={row.price}
           onChangeText={(val) => onChange(row.id, { price: val })}
-          placeholder="4000"
+          placeholder="0"
           placeholderTextColor="#9CA3AF"
           keyboardType="numeric"
           style={fieldStyle}
@@ -106,7 +106,7 @@ export function BatchRow({
         <TextInput
           value={row.stock}
           onChangeText={(val) => onChange(row.id, { stock: val })}
-          placeholder="24"
+          placeholder="0"
           placeholderTextColor="#9CA3AF"
           keyboardType="numeric"
           style={fieldStyle}
@@ -163,7 +163,7 @@ export function BatchRow({
         <TextInput
           value={row.wholesalePrice}
           onChangeText={(val) => onChange(row.id, { wholesalePrice: val })}
-          placeholder="80000"
+          placeholder="0"
           placeholderTextColor="#9CA3AF"
           keyboardType="numeric"
           style={fieldStyle}

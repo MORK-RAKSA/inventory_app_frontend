@@ -202,7 +202,7 @@ export function ProductModal({ portal }: { portal: PortalController }) {
                 value={formPrice}
                 onChangeText={setFormPrice}
                 keyboardType="numeric"
-                placeholder="2100"
+                placeholder="0"
                 placeholderTextColor="#9CA3AF"
                 style={{
                   borderWidth: 1,
@@ -215,30 +215,6 @@ export function ProductModal({ portal }: { portal: PortalController }) {
                   color: P.text,
                 }}
               />
-              {formCcy === 'KHR' && (
-                <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                  {[100, 500, 1000, 5000].map((step) => (
-                    <Press
-                      key={step}
-                      onPress={() => {
-                        const cur = roundKhr(Number(formPrice) || 0);
-                        setFormPrice(String(cur + step));
-                      }}
-                      style={{
-                        flex: 1,
-                        paddingVertical: 6,
-                        borderRadius: 7,
-                        backgroundColor: P.primaryLight,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{ color: P.primary, fontSize: 11.5, fontWeight: '800' }}>
-                        +{step.toLocaleString()} ៛
-                      </Text>
-                    </Press>
-                  ))}
-                </View>
-              )}
             </View>
 
             <View style={{ flexDirection: 'row', gap: 12 }}>

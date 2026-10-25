@@ -51,7 +51,7 @@ export function PosModeSwitcher({
             fontSize: 14,
           }}
         >
-          {tr('Retail Register (Single Units)', 'គិតលុយលក់រាយ (ឯកតារាយ)')}
+          {tr('Retail', 'គិតលុយ លក់រាយ')}
         </Text>
         {retailCount > 0 && (
           <View
@@ -97,7 +97,7 @@ export function PosModeSwitcher({
             fontSize: 14,
           }}
         >
-          {tr('Wholesale Register (Cases & UOM)', 'គិតលុយលក់ដុំ (កេស & UOM)')}
+          {tr('Wholesale', 'គិតលុយ លក់ដុំ')}
         </Text>
         {wholesaleCount > 0 && (
           <View

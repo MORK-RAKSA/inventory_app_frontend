@@ -81,7 +81,7 @@ export function DashboardTab({ portal }: { portal: PortalController }) {
           <Text style={{ color: P.muted, fontSize: 12, marginTop: 4 }}>
             {today} ·{' '}
             {tr(
-              `${todaySales.length} orders today · ${activeSales.length} receipts in ledger`,
+              `${todaySales.length} orders today · ${activeSales.length} receipts`,
               `${todaySales.length} វិក្កយបត្រថ្ងៃនេះ · ${activeSales.length} ក្នុងបញ្ជី`
             )}
           </Text>

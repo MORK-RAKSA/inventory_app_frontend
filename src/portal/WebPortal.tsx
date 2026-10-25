@@ -1,7 +1,9 @@
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { DashboardTab } from './dashboard/DashboardTab';
+import { BatchIntakePage } from './inventory/BatchIntakePage';
 import { InventoryTab } from './inventory/InventoryTab';
+import { ProductFormPage } from './inventory/ProductFormPage';
 import { BatchModal } from './modals/BatchModal';
 import { ProductModal } from './modals/ProductModal';
 import { UomModal } from './modals/UomModal';
@@ -62,6 +64,8 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
                 {tab === 'dashboard' && <DashboardTab portal={portal} />}
                 {tab === 'pos' && <PosTab portal={portal} />}
                 {tab === 'inventory' && <InventoryTab portal={portal} />}
+                {tab === 'product-form' && <ProductFormPage portal={portal} />}
+                {tab === 'batch-intake' && <BatchIntakePage portal={portal} />}
                 {tab === 'uom' && <UomTab portal={portal} />}
                 {tab === 'sales' && <TxnTab portal={portal} />}
                 {tab === 'settings' && <SettingsTab portal={portal} />}
