@@ -103,14 +103,17 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     try {
       const url = buildUrl(base, path);
       const res = await fetch(url, init);
-      // Skip server bad gateways (502, 503, 504), method not allowed (405 from static edge rewrites),
-      // or 404 from non-matching static routes so we fall back to working backend URLs
+      // Skip server bad gateways (502, 503, 504), loop detected (508), internal error (500),
+      // method not allowed (405 from static edge rewrites), or 404 from non-matching static routes
+      // so we fall back to working backend URLs
       if (
         res.status === 404 ||
         res.status === 405 ||
+        res.status === 500 ||
         res.status === 502 ||
         res.status === 503 ||
-        res.status === 504
+        res.status === 504 ||
+        res.status === 508
       ) {
         if (activeBase === base) activeBase = null;
         lastError = new Error(`Server at ${base} returned HTTP ${res.status}`);

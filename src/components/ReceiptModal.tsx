@@ -1074,7 +1074,7 @@ export function ReceiptModal({
                 {tr('Print', 'បោះពុម្ព')}
               </Btn>
             </View>
-            <View style={{ flex: 1.3 }}>
+            <View style={{ flex: 1 }}>
               <Btn
                 icon={Share2}
                 loading={sharingPng}
@@ -1082,7 +1082,7 @@ export function ReceiptModal({
               >
                 {sharingPng
                   ? tr('Saving PNG…', 'កំពុងបង្កើតរូបភាព…')
-                  : tr('Share PNG', 'ចែករំលែករូបភាព PNG')}
+                  : tr('Share', 'ចែករំលែក')}
               </Btn>
             </View>
           </View>

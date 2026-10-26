@@ -149,7 +149,7 @@ export function Field({placeholder,value,onChangeText,keyboardType = 'default',s
 }) {
   const focus = useSharedValue(0);
   const box = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(focus.value, [0, 1], [C.border, C.primary]),
+    borderColor: Platform.OS === 'web' ? C.border : interpolateColor(focus.value, [0, 1], [C.border, C.primary]),
     backgroundColor: interpolateColor(focus.value, [0, 1], [C.surface, '#FFFFFF']),
     transform: [{ scale: interpolate(focus.value, [0, 1], [1, 1.018]) }],
     shadowOpacity: interpolate(focus.value, [0, 1], [0, 0.12]),
@@ -172,7 +172,17 @@ export function Field({placeholder,value,onChangeText,keyboardType = 'default',s
           autoFocus={autoFocus}
           onFocus={() => {focus.value = withTiming(1, {duration: 180});}}
           onBlur={() => {focus.value = withTiming(0, {duration: 180});}}
-          style={{flex: 1, color: C.text, fontSize: 15, height: '100%'}}
+          style={[
+            {flex: 1, color: C.text, fontSize: 15, height: '100%'},
+            Platform.OS === 'web'
+              ? ({
+                  outline: 'none',
+                  outlineStyle: 'none',
+                  outlineWidth: 0,
+                  boxShadow: 'none',
+                } as any)
+              : null,
+          ]}
         />
         {right}
       </Animated.View>

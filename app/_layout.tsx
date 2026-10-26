@@ -85,9 +85,9 @@ function MinimalField({
   const [focused, setFocused] = useState(false);
 
   const containerStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(focus.value, [0, 1], [C.border, C.primary]),
+    borderColor: C.border,
     backgroundColor: interpolateColor(focus.value, [0, 1], ['#FAF9FD', '#FFFFFF']),
-    transform: [{scale: withTiming(focus.value ? 1.008 : 1, {duration: 200, easing: ease})}],
+    transform: [{scale: withTiming(focus.value ? 1.004 : 1, {duration: 200, easing: ease})}],
   }));
 
   return (
@@ -138,13 +138,23 @@ function MinimalField({
             setFocused(false);
             focus.value = withTiming(0, {duration: 200, easing: ease});
           }}
-          style={{
-            flex: 1,
-            color: C.text,
-            fontSize: 15.5,
-            fontWeight: '500',
-            height: '100%',
-          }}
+          style={[
+            {
+              flex: 1,
+              color: C.text,
+              fontSize: 15.5,
+              fontWeight: '500',
+              height: '100%',
+            },
+            Platform.OS === 'web'
+              ? ({
+                  outline: 'none',
+                  outlineStyle: 'none',
+                  outlineWidth: 0,
+                  boxShadow: 'none',
+                } as any)
+              : null,
+          ]}
         />
         {right}
       </Animated.View>
@@ -178,6 +188,46 @@ export default function Root() {
       setUiMode('portal');
     }
   }, [width]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const styleId = 'global-portal-no-focus-outline';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
+          *,
+          *::before,
+          *::after,
+          *:focus,
+          *:focus-visible,
+          *:focus-within,
+          input,
+          input:focus,
+          input:focus-visible,
+          input:focus-within,
+          textarea,
+          textarea:focus,
+          textarea:focus-visible,
+          button,
+          button:focus,
+          button:focus-visible,
+          [tabindex],
+          [tabindex]:focus,
+          [tabindex]:focus-visible {
+            outline: none !important;
+            outline-style: none !important;
+            outline-width: 0 !important;
+            outline-color: transparent !important;
+            box-shadow: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-focus-ring-color: transparent !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  }, []);
 
   const shakeX = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({
