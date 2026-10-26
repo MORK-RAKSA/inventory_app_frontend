@@ -119,9 +119,24 @@ export function RetailCartTable({
               <Text style={{ color: P.text, fontWeight: '700', fontSize: 13 }} numberOfLines={1}>
                 {product.name}
               </Text>
-              <Text style={{ color: P.muted, fontSize: 11 }}>
-                {product.barcode || product.category}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <Text
+                  style={{
+                    color: product.stock <= 5 ? P.rose : P.muted,
+                    fontSize: 11,
+                    fontWeight: '700',
+                  }}
+                >
+                  {tr('Stock', 'ស្តុក')}: {product.stock} {product.baseUnit || ''}
+                </Text>
+                {qty > product.stock && (
+                  <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: '#DC2626', fontSize: 10, fontWeight: '800' }}>
+                      {tr('Over by', 'លើស')} {qty - product.stock}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
             <View style={{ flex: 1.1 }}>
               <Text style={{ color: P.text, fontWeight: '700', fontSize: 12.5 }}>

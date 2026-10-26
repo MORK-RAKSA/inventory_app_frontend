@@ -160,11 +160,14 @@ export interface CambodiaCashExchange {
   totalKhr: number;
   isExact: boolean;
   isShort: boolean;
+  isEnough: boolean;
   shortfallKhr: number;
   shortfallUsd: number;
   splitUsd: number;
   splitKhr: number;
   allKhr: number;
+  changeKhr: number;
+  changeUsd: number;
   formattedSplit: string;
   formattedAllKhr: string;
 }
@@ -199,11 +202,14 @@ export function computeCambodiaCashExchange(
         totalKhr: dueKhr,
         isExact: true,
         isShort: false,
+        isEnough: true,
         shortfallKhr: 0,
         shortfallUsd: 0,
         splitUsd: 0,
         splitKhr: 0,
         allKhr: 0,
+        changeKhr: 0,
+        changeUsd: 0,
         formattedSplit: '0 ៛',
         formattedAllKhr: '0 ៛',
       };
@@ -218,11 +224,14 @@ export function computeCambodiaCashExchange(
         totalKhr: dueKhr,
         isExact: false,
         isShort: true,
+        isEnough: false,
         shortfallKhr: shortKhr,
         shortfallUsd: shortKhr / safeRate,
         splitUsd: 0,
         splitKhr: 0,
         allKhr: 0,
+        changeKhr: 0,
+        changeUsd: 0,
         formattedSplit: `-${shortKhr.toLocaleString('en-US')} ៛`,
         formattedAllKhr: `-${shortKhr.toLocaleString('en-US')} ៛`,
       };
@@ -248,11 +257,14 @@ export function computeCambodiaCashExchange(
       totalKhr: dueKhr,
       isExact: false,
       isShort: false,
+      isEnough: true,
       shortfallKhr: 0,
       shortfallUsd: 0,
       splitUsd,
       splitKhr,
       allKhr,
+      changeKhr: allKhr,
+      changeUsd: splitUsd,
       formattedSplit,
       formattedAllKhr: `${allKhr.toLocaleString('en-US')} ៛`,
     };
@@ -269,11 +281,14 @@ export function computeCambodiaCashExchange(
       totalKhr,
       isExact: true,
       isShort: false,
+      isEnough: true,
       shortfallKhr: 0,
       shortfallUsd: 0,
       splitUsd: 0,
       splitKhr: 0,
       allKhr: 0,
+      changeKhr: 0,
+      changeUsd: 0,
       formattedSplit: '$0.00',
       formattedAllKhr: '0 ៛',
     };
@@ -289,11 +304,14 @@ export function computeCambodiaCashExchange(
       totalKhr,
       isExact: false,
       isShort: true,
+      isEnough: false,
       shortfallKhr: shortKhr,
       shortfallUsd: shortUsd,
       splitUsd: 0,
       splitKhr: 0,
       allKhr: 0,
+      changeKhr: 0,
+      changeUsd: 0,
       formattedSplit: `-$${shortUsd.toFixed(2)}`,
       formattedAllKhr: `-${shortKhr.toLocaleString('en-US')} ៛`,
     };
@@ -325,12 +343,35 @@ export function computeCambodiaCashExchange(
     totalKhr,
     isExact: false,
     isShort: false,
+    isEnough: true,
     shortfallKhr: 0,
     shortfallUsd: 0,
     splitUsd,
     splitKhr,
     allKhr,
+    changeKhr: allKhr,
+    changeUsd: splitUsd,
     formattedSplit,
     formattedAllKhr: `${allKhr.toLocaleString('en-US')} ៛`,
   };
+}
+
+/**
+ * Convenient wrapper / alias for computeCambodiaCashExchange.
+ */
+export function calculateCambodiaCashExchange(
+  tenderAmount: number,
+  totalKhr: number,
+  rate: number,
+  tenderCurrency: 'USD' | 'KHR' = 'KHR'
+): CambodiaCashExchange {
+  const safeRate = rate > 0 ? rate : 4000;
+  const totalUsd = safeRate > 0 ? totalKhr / safeRate : 0;
+  return computeCambodiaCashExchange(
+    tenderAmount,
+    tenderCurrency,
+    totalUsd,
+    totalKhr,
+    safeRate
+  );
 }

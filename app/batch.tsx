@@ -21,7 +21,7 @@ import {
   rememberBarcodeInfo,
 } from "../src/barcodeLookup";
 import { SwipeActions } from "../src/components/SwipeActions";
-import { CategorySelect } from "../src/components/CategorySelect";
+import { DropdownPicker } from "../src/components/DropdownPicker";
 import {
   Press,
   Rise,
@@ -504,20 +504,12 @@ export default function Batch() {
                 }
               />
             )}
-            <Text
-              style={{
-                color: C.muted,
-                fontSize: 12,
-                fontWeight: "700",
-                marginBottom: 7,
-              }}
-            >
-              Category
-            </Text>
-            <CategorySelect
+            <DropdownPicker
+              label="Category"
               value={draft.category}
-              categories={cats}
+              options={cats}
               onChange={(v) => setDraft((d) => (d ? { ...d, category: v } : d))}
+              allowCustom
             />
             <Field
               label={kh ? "តម្លៃ (៛ KHR)" : "Price (៛ KHR)"}

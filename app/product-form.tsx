@@ -40,6 +40,7 @@ import { C, R, shadow } from '../src/theme';
 import { Press, Rise } from '../src/motion';
 import { Btn, Card, Field, khr, money, roundKhr } from '../src/ui';
 import { CategorySelect } from '../src/components/CategorySelect';
+import { DropdownPicker } from '../src/components/DropdownPicker';
 import { CameraScanner, ScanResult } from '../src/components/CameraScanner';
 import {
   lookupBarcodeOnline,
@@ -178,12 +179,14 @@ export default function ProductFormScreen() {
   const [lookingUp, setLookingUp] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const autoFilledNameRef = useRef<string | null>(null);
+  const populatedRef = useRef(false);
 
   // Populate data when editing
   useEffect(() => {
-    if (params.id && products.length > 0) {
+    if (params.id && products.length > 0 && !populatedRef.current) {
       const existing = products.find((p) => p.id === params.id);
       if (existing) {
+        populatedRef.current = true;
         setName(existing.name);
         setBarcode(existing.barcode || '');
         setCategory(existing.category || 'General');
@@ -570,13 +573,15 @@ export default function ProductFormScreen() {
               />
             </View>
 
-            {/* Category */}
-            <View>
-              <Text style={styles.fieldLabel}>
-                {tr('Category', 'ប្រភេទមុខទំនិញ')}
-              </Text>
-              <CategorySelect value={category} categories={categories} onChange={setCategory} />
-            </View>
+            {/* Category Dropdown from Config DB */}
+            <DropdownPicker
+              label={tr('Category (from Config)', 'ប្រភេទមុខទំនិញ (ពី Config)')}
+              value={category}
+              options={categories}
+              onChange={setCategory}
+              placeholder={tr('Select category…', 'ជ្រើសរើសប្រភេទ…')}
+              allowCustom
+            />
           </View>
         </Rise>
 
@@ -782,62 +787,15 @@ export default function ProductFormScreen() {
                   })}
                 </View>
 
-                {/* Base Unit Selector from Portal Config */}
-                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
-                  {tr('Base Unit (Single Unit - Configured in Portal)', 'ឯកតារាយ (កំណត់ក្នុង Portal)')}
-                </Text>
-                {Platform.OS === 'web' ? (
-                  /* @ts-ignore */
-                  <select
-                    value={baseUnit}
-                    onChange={(e: any) => setBaseUnit(e.target.value)}
-                    style={{
-                      height: 44,
-                      borderRadius: 12,
-                      border: `1.5px solid ${C.border}`,
-                      backgroundColor: '#FFFFFF',
-                      padding: '0 14px',
-                      color: C.text,
-                      fontSize: 14,
-                      fontWeight: '700',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      width: '100%',
-                      marginBottom: 10,
-                    }}
-                  >
-                    {availableBaseUnits.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <View style={styles.packagingPresetsRow}>
-                    {availableBaseUnits.map((b) => {
-                      const isSelected = baseUnit.toLowerCase() === b.toLowerCase();
-                      return (
-                        <Press
-                          key={b}
-                          onPress={() => setBaseUnit(b)}
-                          style={[
-                            styles.presetChip,
-                            isSelected && styles.presetChipActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.presetChipText,
-                              isSelected && styles.presetChipTextActive,
-                            ]}
-                          >
-                            {b}
-                          </Text>
-                        </Press>
-                      );
-                    })}
-                  </View>
-                )}
+                {/* Base Unit Dropdown Selector from Config DB */}
+                <DropdownPicker
+                  label={tr('Base Unit (from Config)', 'ឯកតារាយ (កំណត់ក្នុង Config)')}
+                  value={baseUnit}
+                  options={availableBaseUnits}
+                  onChange={setBaseUnit}
+                  placeholder={tr('Select Base Unit…', 'ជ្រើសរើសឯកតារាយ…')}
+                  allowCustom
+                />
 
                 {/* Wholesale Case Price Summary Banner */}
                 {casePreview ? (

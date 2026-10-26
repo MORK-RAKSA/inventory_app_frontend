@@ -1365,6 +1365,11 @@ export function usePortalController() {
           idempotencyKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
           priceTier: isWholesale ? 'WHOLESALE' : 'RETAIL',
+          tenderAmount: tenderInfo?.tenderAmount,
+          tenderCurrency: tenderInfo?.tenderCurrency,
+          changeText: tenderInfo?.exchange.formattedSplit,
+          changeKhr: tenderInfo?.exchange.changeKhr,
+          changeUsd: tenderInfo?.exchange.changeUsd,
           items: itemsPayload,
         }),
       });

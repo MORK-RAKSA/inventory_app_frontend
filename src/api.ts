@@ -63,6 +63,8 @@ export interface Sale {
   changeText?: string;
   changeSplit?: string;
   changeAllKhr?: string;
+  changeKhr?: number;
+  changeUsd?: number;
   items: {
     id: string;
     productId: string;
