@@ -5,7 +5,7 @@ import Animated,{FadeIn,FadeOut} from 'react-native-reanimated';
 import {useFocusEffect} from 'expo-router';
 import {ArrowLeftRight,ShieldCheck,Globe2,Info,CheckCircle2,ScanLine,Radio,Smartphone,User,LogOut,Sparkles,SlidersHorizontal,RefreshCw} from 'lucide-react-native';
 import {api,Settings} from '../../src/api';
-import {logout,getUsername,getUserRole,getFullName} from '../../src/auth';
+import {logout,getUsername,getUserRole,getFullName,resolveApiBase} from '../../src/auth';
 import {showSignedOut} from '../../src/authEvents';
 import {Pressable} from 'react-native';
 import {useLanguage} from '../../src/i18n';
@@ -280,7 +280,9 @@ export default function SettingsPage() {
             <IconBadge icon={Info} size={44} />
             <View style={{flex: 1}}>
               <Text style={{color: C.text, fontWeight: '800'}}>គ្រប់គ្រងហាង · EasySell</Text>
-              <Text style={{color: C.muted, fontSize: 12.5, marginTop: 2}}>{tr('API connected','បានភ្ជាប់ API')}</Text>
+              <Text style={{color: C.muted, fontSize: 11.5, marginTop: 2}} numberOfLines={1}>
+                {tr('API: ', 'API៖ ')}{resolveApiBase()}
+              </Text>
             </View>
           </View>
         </Card>

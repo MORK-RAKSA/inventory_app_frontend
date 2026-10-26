@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { showSignedOut } from "./authEvents";
-import { accessToken, apiFetch, refresh } from "./auth";
+import { accessToken, apiFetch, getApiBaseUrl, refresh, resolveApiBase } from "./auth";
+
+export { getApiBaseUrl, resolveApiBase };
 
 export interface Product {
   id: string;

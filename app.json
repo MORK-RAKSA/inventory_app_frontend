@@ -24,7 +24,8 @@
         "NSCameraUsageDescription": "Allow គ្រប់ហាង, EasySell to access your camera to scan product barcodes.",
         "UIBackgroundModes": [
           "audio"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

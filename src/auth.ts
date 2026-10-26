@@ -2,25 +2,47 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-const VERCEL_BACKEND_API = "https://inventory-app-backend-5iet.onrender.com/api";
+/**
+ * Resolves the primary API base URL configured in the environment.
+ * Supports EXPO_PUBLIC_API_URL (Expo standard), REACT_APP_API_URL, NEXT_PUBLIC_API_URL, and API_URL.
+ */
+export function getEnvApiUrl(): string | null {
+  const envVal =
+    process.env.EXPO_PUBLIC_API_URL ||
+    process.env.REACT_APP_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.API_URL;
 
-function normalizeApiBase(raw: string): string {
+  if (envVal && typeof envVal === "string" && envVal.trim()) {
+    return normalizeApiBase(envVal.trim());
+  }
+  return null;
+}
+
+export function normalizeApiBase(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, "");
-  if (!trimmed) return VERCEL_BACKEND_API;
+  if (!trimmed) return "";
   if (trimmed === "/api" || trimmed.endsWith("/api")) return trimmed;
   return `${trimmed}/api`;
 }
 
 function getCandidateBases(): string[] {
   const list: string[] = [];
+  const envBase = getEnvApiUrl();
 
+  // 1. PRIMARY: When an environment variable is configured, BOTH mobile and web/portal prioritize it!
+  if (envBase) {
+    list.push(envBase);
+  }
+
+  // 2. WEB / PORTAL SAME-ORIGIN: If running on web and no ENV, prioritize relative /api
   if (Platform.OS === "web" && typeof window !== "undefined") {
     const { protocol, hostname, origin } = window.location;
-    // On web, prioritize same-origin /api first so reverse proxies, Vercel rewrites,
-    // and dev servers handle the request directly without CORS or 502 bad gateways.
-    list.push("/api");
-    if (origin) {
-      list.push(`${origin}/api`);
+    if (!envBase) {
+      list.push("/api");
+      if (origin) {
+        list.push(`${origin}/api`);
+      }
     }
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       list.push("http://localhost:8080/api");
@@ -33,21 +55,31 @@ function getCandidateBases(): string[] {
     } else if (hostname.includes("-8081.")) {
       list.push(`${protocol}//${hostname.replace("-8081.", "-8080.")}/api`);
     }
+
+    // Also include same-origin as fallback if custom env was set
+    if (envBase) {
+      list.push("/api");
+      if (origin) {
+        list.push(`${origin}/api`);
+      }
+    }
   }
 
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    list.push(normalizeApiBase(process.env.EXPO_PUBLIC_API_URL));
-  }
+  // 3. FALLBACKS FOR LOCAL DEV & EMULATORS
   list.push("http://localhost:8080/api");
-  list.push(VERCEL_BACKEND_API);
 
-  return [...new Set(list)];
+  const filtered = list.filter(Boolean);
+  return [...new Set(filtered.length ? filtered : ["/api"])];
 }
 
 let activeBase: string | null = null;
 
 export function resolveApiBase(): string {
-  return activeBase || getCandidateBases()[0];
+  return activeBase || getCandidateBases()[0] || "/api";
+}
+
+export function getApiBaseUrl(): string {
+  return resolveApiBase();
 }
 
 function buildUrl(base: string, path: string): string {
