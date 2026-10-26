@@ -16,7 +16,7 @@ import { useLanguage } from '../i18n';
 import { useToast } from '../toast';
 import { useSounds } from '../hooks/useSounds';
 import { exportExcel } from '../exportExcel';
-import { lookupBarcodeOnline } from '../barcodeLookup';
+import { lookupBarcodeOnline, buildSmartBarcodeName } from '../barcodeLookup';
 import { fetchUsdKhrRate, ExchangeRateQuote, loadLastRateQuote } from '../exchangeRate';
 import {
   getLiveActivityLog,
@@ -77,6 +77,7 @@ export function usePortalController() {
   const [formCaseUnitName, setFormCaseUnitName] = useState('Case');
   const [formCaseQty, setFormCaseQty] = useState('24');
   const [formWholesaleMinQty, setFormWholesaleMinQty] = useState('1');
+  const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [selectedUomConfigId, setSelectedUomConfigId] = useState<string>('uom-case-24');
 
@@ -397,6 +398,7 @@ export function usePortalController() {
     setFormWholesaleEnabled(false);
     setFormWholesaleCcy('KHR');
     setFormWholesalePrice('');
+    setFormImageUrl(null);
     const defUom = uomConfigs[0] || DEFAULT_UOM_CONFIGS[0];
     setSelectedUomConfigId(defUom?.id || 'uom-case-24');
     setFormBaseUnit(defUom?.baseUnit || 'Can');
@@ -406,10 +408,14 @@ export function usePortalController() {
     setShowProductModal(false);
     setTab('product-form');
     if (clean) {
+      const fallback = buildSmartBarcodeName(clean);
+      setFormName(fallback.name);
+      if (fallback.category) setFormCategory(fallback.category);
       void lookupBarcodeOnline(clean, { allowFallback: true }).then((info) => {
         if (info?.name) {
-          setFormName((prev) => prev.trim() || info.name);
+          setFormName((prev) => (prev && prev !== fallback.name ? prev : info.name));
           if (info.category) setFormCategory(info.category);
+          if (info.imageUrl) setFormImageUrl((prev) => prev || info.imageUrl || null);
         }
       });
     }
@@ -663,6 +669,7 @@ export function usePortalController() {
     setFormCaseUnitName(p.caseUnitName || 'Case');
     setFormCaseQty(String(p.caseQty || 24));
     setFormWholesaleMinQty(String(p.wholesaleMinQty || 1));
+    setFormImageUrl(p.imageUrl || null);
     const matchingUom =
       uomConfigs.find(
         (u) =>
@@ -1376,6 +1383,7 @@ export function usePortalController() {
         stock: qty,
         lowStockThreshold: limit,
         expirationDate: formExpiry.trim() || null,
+        imageUrl: formImageUrl || null,
         wholesalePrice:
           wholesaleUsdVal !== null
             ? (formCcy === 'KHR'
@@ -1660,6 +1668,8 @@ export function usePortalController() {
     setFormCaseQty,
     formWholesaleMinQty,
     setFormWholesaleMinQty,
+    formImageUrl,
+    setFormImageUrl,
     savingProduct,
     setSavingProduct,
     selectedUomConfigId,

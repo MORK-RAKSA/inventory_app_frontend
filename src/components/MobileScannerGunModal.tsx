@@ -388,8 +388,8 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       pendingRead.current = { code, n: 1, at: now };
     }
 
-    // Require 2 matching frames to avoid jitter/burst reads from the camera
-    const needed = 2;
+    // Trigger immediately on 1 frame; latch and gate cooldown avoid duplicates
+    const needed = 1;
     if (pendingRead.current.n >= needed) {
       pendingRead.current = { code: '', n: 0, at: 0 };
       void handleCode(code);

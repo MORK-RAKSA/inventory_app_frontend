@@ -1,11 +1,26 @@
-import { Modal, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Text, TextInput, View } from 'react-native';
 import { X } from 'lucide-react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';
 import type { PortalController } from '../usePortalController';
 
+const PACKAGING_OPTIONS = [
+  'Case',
+  'Carton',
+  'Pack',
+  'Box',
+  'Dozen',
+  'Half Case',
+  'Bundle',
+  'Bag',
+  'Crate',
+  'Pallet',
+  'Container',
+];
+
 export function UomModal({ portal }: { portal: PortalController }) {
   const {
+    availableBaseUnits,
     closeUomModal,
     editingUomConfig,
     saveUomConfigAction,
@@ -24,6 +39,29 @@ export function UomModal({ portal }: { portal: PortalController }) {
     uomFormDescription,
     uomFormName,
   } = portal;
+
+  const baseUnitOptions = Array.from(
+    new Set([
+      ...(availableBaseUnits || []),
+      'Piece',
+      'Can',
+      'Bottle',
+      'Box',
+      'Pack',
+      'Bag',
+      'Cup',
+      'Pair',
+      'Set',
+      uomFormBaseUnit,
+    ].filter(Boolean))
+  );
+
+  const packagingOptions = Array.from(
+    new Set([
+      ...PACKAGING_OPTIONS,
+      uomFormCaseUnitName,
+    ].filter(Boolean))
+  );
 
   return (
     <Modal visible={showUomModal} transparent animationType="fade">
@@ -89,41 +127,115 @@ export function UomModal({ portal }: { portal: PortalController }) {
                 <Text style={{ color: P.textSub, fontSize: 11.5, fontWeight: '700', marginBottom: 4 }}>
                   {tr('BASE UNIT (SINGLE)', 'ឯកតារាយ')}
                 </Text>
-                <TextInput
-                  value={uomFormBaseUnit}
-                  onChangeText={setUomFormBaseUnit}
-                  placeholder="Can / Bottle / Piece / Box / Pack"
-                  placeholderTextColor="#9CA3AF"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: P.borderStrong,
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    height: 40,
-                    color: P.text,
-                    backgroundColor: P.surfaceAlt,
-                  }}
-                />
+                {Platform.OS === 'web' ? (
+                  <View
+                    style={{
+                      borderWidth: 1,
+                      borderColor: P.borderStrong,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      backgroundColor: P.surfaceAlt,
+                      height: 40,
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <select
+                      value={uomFormBaseUnit || 'Piece'}
+                      onChange={(e: any) => setUomFormBaseUnit(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: P.text,
+                        padding: '0 10px',
+                        fontSize: 13,
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {baseUnitOptions.map((u) => (
+                        <option key={u} value={u} style={{ background: P.surface, color: P.text }}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </View>
+                ) : (
+                  <TextInput
+                    value={uomFormBaseUnit}
+                    onChangeText={setUomFormBaseUnit}
+                    placeholder="Can / Bottle / Piece / Box / Pack"
+                    placeholderTextColor="#9CA3AF"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: P.borderStrong,
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      height: 40,
+                      color: P.text,
+                      backgroundColor: P.surfaceAlt,
+                    }}
+                  />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: P.textSub, fontSize: 11.5, fontWeight: '700', marginBottom: 4 }}>
                   {tr('MASTER PACKAGING', 'ឯកតាដុំធំ')}
                 </Text>
-                <TextInput
-                  value={uomFormCaseUnitName}
-                  onChangeText={setUomFormCaseUnitName}
-                  placeholder="Case / Carton / Pack / Box"
-                  placeholderTextColor="#9CA3AF"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: P.borderStrong,
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    height: 40,
-                    color: P.text,
-                    backgroundColor: P.surfaceAlt,
-                  }}
-                />
+                {Platform.OS === 'web' ? (
+                  <View
+                    style={{
+                      borderWidth: 1,
+                      borderColor: P.borderStrong,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      backgroundColor: P.surfaceAlt,
+                      height: 40,
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <select
+                      value={uomFormCaseUnitName || 'Case'}
+                      onChange={(e: any) => setUomFormCaseUnitName(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: P.text,
+                        padding: '0 10px',
+                        fontSize: 13,
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {packagingOptions.map((p) => (
+                        <option key={p} value={p} style={{ background: P.surface, color: P.text }}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </View>
+                ) : (
+                  <TextInput
+                    value={uomFormCaseUnitName}
+                    onChangeText={setUomFormCaseUnitName}
+                    placeholder="Case / Carton / Pack / Box"
+                    placeholderTextColor="#9CA3AF"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: P.borderStrong,
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      height: 40,
+                      color: P.text,
+                      backgroundColor: P.surfaceAlt,
+                    }}
+                  />
+                )}
               </View>
             </View>
 

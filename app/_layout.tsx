@@ -24,6 +24,7 @@ import {Press,Rise,ease} from '../src/motion';
 import {ToastProvider} from '../src/toast';
 import {WebPortal} from '../src/components/WebPortal';
 import {LiveAlertWatcher} from '../src/liveSync';
+import {AppLogo} from '../src/components/AppLogo';
 
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   if (typeof HTMLMediaElement !== 'undefined' && HTMLMediaElement.prototype?.play) {
@@ -285,7 +286,7 @@ export default function Root() {
             marginBottom: 18,
           }}
         >
-          <Store size={30} color={C.primary} strokeWidth={2.2} />
+          <AppLogo size={36} />
         </View>
         <Text style={{fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5, marginBottom: 14}}>
           គ្រប់គ្រងហាង · EasySell
@@ -348,17 +349,17 @@ export default function Root() {
               <Rise index={0} style={{alignItems: 'center', marginBottom: 32}}>
                 <View
                   style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 20,
-                    backgroundColor: C.primary,
+                    width: 64,
+                    height: 64,
+                    borderRadius: 22,
+                    backgroundColor: '#EDE9FE',
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: 16,
                     ...shadow.md,
                   }}
                 >
-                  <Store size={28} color="#FFFFFF" strokeWidth={2.2} />
+                  <AppLogo size={36} />
                 </View>
                 <Text
                   style={{

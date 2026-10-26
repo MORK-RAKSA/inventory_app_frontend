@@ -163,6 +163,7 @@ export default function Inventory() {
       setSearch(clean);
       setFilter('All');
       setOnlyLow(false);
+      setDetail(found);
       return {
         ok: true,
         label: `${found.name} (${found.stock} ${tr('in stock', 'ក្នុងស្តុក')})`,

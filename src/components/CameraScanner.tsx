@@ -297,8 +297,8 @@ export function CameraScanner({
       pendingRead.current = { code: cleanCode, n: 1, at: now };
     }
 
-    // Require 2 matching frames to ensure rock-solid stability and prevent sudden erratic triggers
-    const needed = 2;
+    // GTINs and retail barcodes trigger immediately on 1 frame; latch and post-success cooldown prevent duplicates
+    const needed = 1;
     if (pendingRead.current.n >= needed) {
       pendingRead.current = { code: '', n: 0, at: 0 };
       rememberScan(latch.current, cleanCode, now);

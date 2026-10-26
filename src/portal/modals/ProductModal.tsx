@@ -1,4 +1,4 @@
-import { Modal, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Text, TextInput, View } from 'react-native';
 import { Boxes, X } from 'lucide-react-native';
 import { roundKhr } from '../../theme';
 import { Press } from '../../motion';
@@ -8,6 +8,7 @@ import type { PortalController } from '../usePortalController';
 export function ProductModal({ portal }: { portal: PortalController }) {
   const {
     applyUomConfigToProductForm,
+    categories,
     editingProduct,
     formBarcode,
     formBaseUnit,
@@ -147,20 +148,63 @@ export function ProductModal({ portal }: { portal: PortalController }) {
                 <Text style={{ color: P.textSub, fontSize: 12, fontWeight: '700', marginBottom: 5 }}>
                   {tr('CATEGORY', 'ប្រភេទទំនិញ')}
                 </Text>
-                <TextInput
-                  value={formCategory}
-                  onChangeText={setFormCategory}
-                  placeholder="General"
-                  placeholderTextColor="#9CA3AF"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: P.borderStrong,
-                    borderRadius: 10,
-                    paddingHorizontal: 12,
-                    height: 42,
-                    color: P.text,
-                  }}
-                />
+                {Platform.OS === 'web' ? (
+                  <View
+                    style={{
+                      borderWidth: 1,
+                      borderColor: P.borderStrong,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      backgroundColor: P.surfaceAlt,
+                      height: 42,
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <select
+                      value={formCategory || 'General'}
+                      onChange={(e: any) => setFormCategory(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: P.text,
+                        padding: '0 12px',
+                        fontSize: 13.5,
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {Array.from(
+                        new Set([
+                          'General',
+                          ...(categories || []).filter((c) => c && c !== 'All'),
+                          formCategory,
+                        ].filter(Boolean))
+                      ).map((cat) => (
+                        <option key={cat} value={cat} style={{ background: P.surface, color: P.text }}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </View>
+                ) : (
+                  <TextInput
+                    value={formCategory}
+                    onChangeText={setFormCategory}
+                    placeholder="General"
+                    placeholderTextColor="#9CA3AF"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: P.borderStrong,
+                      borderRadius: 10,
+                      paddingHorizontal: 12,
+                      height: 42,
+                      color: P.text,
+                    }}
+                  />
+                )}
               </View>
             </View>
 

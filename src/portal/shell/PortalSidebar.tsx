@@ -5,30 +5,12 @@ import { logout } from '../../auth';
 import { showSignedOut } from '../../authEvents';
 import { Press } from '../../motion';
 import { glassInset, P, shadow } from '../theme';
+import { AppLogo } from '../../components/AppLogo';
 import type { PortalController } from '../usePortalController';
 
 /** 2×2 brand mark matching the dashboard mock. */
 function BrandMark() {
-  return (
-    <View style={{ width: 30, height: 30, justifyContent: 'center', gap: 3 }}>
-      {[0, 1].map((row) => (
-        <View key={row} style={{ flexDirection: 'row', gap: 3 }}>
-          {[0, 1].map((col) => (
-            <View
-              key={col}
-              style={{
-                width: 11,
-                height: 11,
-                borderRadius: 4,
-                backgroundColor: P.primary,
-                opacity: row === 0 && col === 0 ? 1 : row + col === 1 ? 0.75 : 0.45,
-              }}
-            />
-          ))}
-        </View>
-      ))}
-    </View>
-  );
+  return <AppLogo size={30} />;
 }
 
 export function PortalSidebar({ portal }: { portal: PortalController }) {

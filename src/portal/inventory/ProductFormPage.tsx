@@ -1,17 +1,21 @@
-import { useState } from 'react';
-import { ActivityIndicator, Platform, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Image, Platform, Text, TextInput, View } from 'react-native';
 import {
   ArrowLeft,
   Barcode,
   Boxes,
   Check,
   DollarSign,
+  ImageIcon,
+  ImagePlus,
   Package,
   Plus,
   Save,
   SlidersHorizontal,
   Sparkles,
   Tag,
+  Trash2,
+  UploadCloud,
   Warehouse,
   X,
 } from 'lucide-react-native';
@@ -40,6 +44,8 @@ export function ProductFormPage({ portal }: { portal: PortalController }) {
     formWholesaleEnabled,
     formWholesaleMinQty,
     formWholesalePrice,
+    formImageUrl,
+    setFormImageUrl,
     isCompact,
     rate,
     saveProductForm,
@@ -70,6 +76,18 @@ export function ProductFormPage({ portal }: { portal: PortalController }) {
   const [showAddBaseUnit, setShowAddBaseUnit] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const fileInputRef = useRef<any>(null);
+
+  const handleUploadImageWeb = (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const dataUrl = uploadEvent.target?.result as string;
+      if (dataUrl) setFormImageUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Computed case price calculation
   const computedWholesaleCasePrice = (() => {
@@ -217,6 +235,126 @@ export function ProductFormPage({ portal }: { portal: PortalController }) {
       >
         {/* Left Column: Basic Details & Pricing */}
         <View style={{ flex: 1, width: '100%', gap: 18 }}>
+          {/* Section: Product Image Upload */}
+          <View
+            style={{
+              backgroundColor: P.surface,
+              borderRadius: 16,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: P.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <ImageIcon size={18} color={P.primary} />
+              <Text style={{ color: P.text, fontSize: 15, fontWeight: '800' }}>
+                {tr('Product Image', 'រូបភាពទំនិញ')}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <View
+                style={{
+                  width: 90,
+                  height: 90,
+                  borderRadius: 14,
+                  backgroundColor: P.surfaceAlt,
+                  borderWidth: 1,
+                  borderColor: P.borderStrong,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {formImageUrl ? (
+                  <Image
+                    source={{ uri: formImageUrl }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <ImageIcon size={32} color={P.muted} />
+                )}
+              </View>
+
+              <View style={{ flex: 1, gap: 8 }}>
+                {Platform.OS === 'web' && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    onChange={handleUploadImageWeb}
+                  />
+                )}
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  <Press
+                    onPress={() => {
+                      if (Platform.OS === 'web' && fileInputRef.current) {
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      backgroundColor: P.primaryLight,
+                      borderWidth: 1,
+                      borderColor: P.primary,
+                    }}
+                  >
+                    <ImagePlus size={15} color={P.primary} />
+                    <Text style={{ color: P.primary, fontSize: 12, fontWeight: '700' }}>
+                      {formImageUrl ? tr('Change Photo', 'ប្តូររូបភាព') : tr('Upload Photo', 'បញ្ចូលរូបភាព')}
+                    </Text>
+                  </Press>
+
+                  {formImageUrl && (
+                    <Press
+                      onPress={() => setFormImageUrl(null)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: '#FEE2E2',
+                        borderWidth: 1,
+                        borderColor: '#FECACA',
+                      }}
+                    >
+                      <Trash2 size={14} color="#DC2626" />
+                      <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>
+                        {tr('Remove', 'លុបរូប')}
+                      </Text>
+                    </Press>
+                  )}
+                </View>
+
+                <TextInput
+                  value={formImageUrl || ''}
+                  onChangeText={(val) => setFormImageUrl(val.trim() || null)}
+                  placeholder={tr('Or paste image URL...', 'ឬបិទភ្ជាប់តំណរូបភាព (URL)...')}
+                  placeholderTextColor="#9CA3AF"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: P.borderStrong,
+                    borderRadius: 8,
+                    paddingHorizontal: 10,
+                    height: 36,
+                    fontSize: 12,
+                    color: P.text,
+                    backgroundColor: P.surfaceAlt,
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+
           {/* Section: Basic Information */}
           <View
             style={{
