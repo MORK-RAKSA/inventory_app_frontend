@@ -15,7 +15,7 @@ export function InventoryRow({
 }: {
   product: Product;
   rate: number;
-  onRestock: (product: Product, delta: number) => void;
+  onRestock?: (product: Product, delta: number) => void;
   onEdit: (product: Product) => void;
   onArchive: (product: Product) => void;
 }) {
@@ -109,33 +109,10 @@ export function InventoryRow({
           flex: INV_COL.actions,
           flexDirection: 'row',
           justifyContent: 'flex-end',
+          alignItems: 'center',
           gap: 6,
         }}
       >
-        <Press
-          onPress={() => onRestock(product, 10)}
-          style={{
-            backgroundColor: P.surfaceAlt,
-            borderWidth: 1,
-            borderColor: P.border,
-            paddingHorizontal: 8,
-            paddingVertical: 6,
-            borderRadius: 7,
-          }}
-        >
-          <Text style={{ color: P.text, fontSize: 11.5, fontWeight: '800' }}>+10</Text>
-        </Press>
-        <Press
-          onPress={() => onRestock(product, 100)}
-          style={{
-            backgroundColor: P.primaryLight,
-            paddingHorizontal: 8,
-            paddingVertical: 6,
-            borderRadius: 7,
-          }}
-        >
-          <Text style={{ color: P.primary, fontSize: 11.5, fontWeight: '800' }}>+100</Text>
-        </Press>
         <Press
           onPress={() => onEdit(product)}
           style={{

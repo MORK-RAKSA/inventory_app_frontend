@@ -220,7 +220,7 @@ export function ProductModal({ portal }: { portal: PortalController }) {
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: P.textSub, fontSize: 12, fontWeight: '700', marginBottom: 5 }}>
-                  {tr('STOCK QUANTITY', 'ចំនួនស្តុក')}
+                  {editingProduct ? tr('CURRENT STOCK', 'ចំនួនស្តុកបច្ចុប្បន្ន') : tr('STOCK QUANTITY', 'ចំនួនស្តុក')}
                 </Text>
                 <TextInput
                   value={formStock}
@@ -237,6 +237,31 @@ export function ProductModal({ portal }: { portal: PortalController }) {
                     color: P.text,
                   }}
                 />
+                {Boolean(editingProduct) && (
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    {[5, 10, 50, 100].map((delta) => (
+                      <Press
+                        key={delta}
+                        onPress={() => {
+                          const current = Number(formStock) || 0;
+                          setFormStock(String(Math.max(0, current + delta)));
+                        }}
+                        style={{
+                          backgroundColor: P.primaryLight,
+                          borderWidth: 1,
+                          borderColor: P.border,
+                          paddingHorizontal: 9,
+                          paddingVertical: 5,
+                          borderRadius: 7,
+                        }}
+                      >
+                        <Text style={{ color: P.primary, fontSize: 11.5, fontWeight: '800' }}>
+                          +{delta}
+                        </Text>
+                      </Press>
+                    ))}
+                  </View>
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: P.textSub, fontSize: 12, fontWeight: '700', marginBottom: 5 }}>

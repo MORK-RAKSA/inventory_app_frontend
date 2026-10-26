@@ -22,7 +22,7 @@ export function InventoryTableHeader() {
       <Text style={{ ...cell, flex: INV_COL.price, textAlign: 'right' }}>PRICE (៛ KHR)</Text>
       <Text style={{ ...cell, flex: INV_COL.usd, textAlign: 'right' }}>USD ($)</Text>
       <Text style={{ ...cell, flex: INV_COL.stock, textAlign: 'center' }}>STOCK</Text>
-      <Text style={{ ...cell, flex: INV_COL.actions, textAlign: 'right' }}>QUICK ACTIONS</Text>
+      <Text style={{ ...cell, flex: INV_COL.actions, textAlign: 'right' }}>ACTIONS</Text>
     </View>
   );
 }
