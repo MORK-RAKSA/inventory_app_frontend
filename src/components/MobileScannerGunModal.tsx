@@ -10,6 +10,7 @@ import {
   Vibration,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, BarcodeType } from 'expo-camera';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ImagePicker from 'expo-image-picker';
@@ -178,6 +179,7 @@ export function MobileScannerGunModal({ visible, onClose }: { visible: boolean; 
 
 function ScannerGunBody({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { tr } = useLanguage();
   const { playScan, playFail } = useSounds();
   // Same data source the Inventory screens use, so a scan resolves against the live catalog.
@@ -481,7 +483,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       {/* ── Header ─────────────────────────────────────────────── */}
       <View
         style={{
-          paddingTop: Platform.OS === 'ios' ? 58 : 30,
+          paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 48 : 20),
           paddingHorizontal: 16,
           paddingBottom: 12,
           flexDirection: 'row',
@@ -546,51 +548,8 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
         </Press>
       </View>
 
-      {/* ── Function selector ──────────────────────────────────── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
-      >
-        {MODES.map((m) => {
-          const selected = mode === m.key;
-          const Icon = m.icon;
-          return (
-            <Press
-              key={m.key}
-              onPress={() => switchMode(m.key)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingHorizontal: 14,
-                paddingVertical: 9,
-                borderRadius: 999,
-                backgroundColor: selected ? m.accent : G.panel,
-                borderWidth: 1,
-                borderColor: selected ? m.accent : G.border,
-              }}
-            >
-              <Icon size={15} color={selected ? '#0A0E1A' : G.muted} />
-              <Text
-                style={{
-                  color: selected ? '#0A0E1A' : G.text,
-                  fontSize: 12.5,
-                  fontWeight: selected ? '900' : '700',
-                }}
-              >
-                {tr(m.labelEn, m.labelKh)}
-              </Text>
-            </Press>
-          );
-        })}
-      </ScrollView>
-      <Text style={{ color: G.muted, fontSize: 11.5, lineHeight: 16, paddingHorizontal: 16, paddingBottom: 10 }}>
-        {tr(activeMode.hintEn, activeMode.hintKh)}
-      </Text>
-
       {/* ── Viewfinder ─────────────────────────────────────────── */}
-      <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
         <View style={{ height: 232, borderRadius: 24, overflow: 'hidden', backgroundColor: '#000' }}>
           {permission?.granted ? (
             <CameraView
@@ -1045,6 +1004,103 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
             })
           )}
         </ScrollView>
+      </View>
+
+      {/* ── Bottom Navigation Tab Bar ──────────────────────────── */}
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderColor: G.border,
+          backgroundColor: G.panel,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 12),
+        }}
+      >
+        {/* Subtle Mode Hint Banner */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            paddingHorizontal: 16,
+            marginBottom: 6,
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: activeMode.accent,
+            }}
+          />
+          <Text
+            numberOfLines={1}
+            style={{
+              color: G.muted,
+              fontSize: 11,
+              textAlign: 'center',
+              fontWeight: '600',
+            }}
+          >
+            {tr(activeMode.hintEn, activeMode.hintKh)}
+          </Text>
+        </View>
+
+        {/* Tab Items Row */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-around',
+            paddingHorizontal: 8,
+          }}
+        >
+          {MODES.map((m) => {
+            const selected = mode === m.key;
+            const Icon = m.icon;
+            return (
+              <Press
+                key={m.key}
+                onPress={() => switchMode(m.key)}
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 4,
+                  gap: 3,
+                }}
+              >
+                <View
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    borderRadius: 14,
+                    backgroundColor: selected ? `${m.accent}22` : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon
+                    size={20}
+                    color={selected ? m.accent : G.muted}
+                    strokeWidth={selected ? 2.4 : 1.8}
+                  />
+                </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: selected ? '900' : '600',
+                    color: selected ? m.accent : G.muted,
+                  }}
+                >
+                  {tr(m.labelEn, m.labelKh)}
+                </Text>
+              </Press>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
