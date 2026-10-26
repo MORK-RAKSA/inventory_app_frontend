@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://inventoryappbackend.vercel.app/api/$1"
+      "destination": "https://inventory-app-backend-5iet.onrender.com/api/$1"
     },
     {
       "source": "/((?!_expo/|assets/|favicon.ico).*)",
