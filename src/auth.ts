@@ -30,31 +30,27 @@ function getCandidateBases(): string[] {
   const list: string[] = [];
   const envBase = getEnvApiUrl();
 
-  // 1. WEB HOSTED (Vercel / Cloud): When running on web that is not localhost,
-  // prioritize same-origin relative /api so requests proxy through the host directly,
-  // avoiding cross-origin preflight / CORS issues completely.
+  // 1. WEB (Browser): ALWAYS prioritize relative same-origin /api first!
+  // Whether running on localhost:8081 (Metro proxy middleware) or hosted on Vercel (vercel.json rewrite),
+  // same-origin /api completely avoids browser CORS preflight (OPTIONS) 403 Forbidden errors.
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    const { origin, hostname } = window.location;
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      list.push("/api");
-      if (origin) list.push(`${origin}/api`);
+    list.push("/api");
+    if (window.location?.origin) {
+      list.push(`${window.location.origin}/api`);
     }
   }
 
-  // 2. PRIMARY ENV: When EXPO_PUBLIC_API_URL or API_URL is set, prioritize it
+  // 2. PRIMARY ENV: When EXPO_PUBLIC_API_URL or API_URL is explicitly set
   if (envBase) {
     list.push(envBase);
   }
 
-  // 3. CLOUD BACKEND FALLBACKS (Render & Vercel edge proxy)
+  // 3. CLOUD BACKEND (Render)
   list.push("https://inventory-app-backend-5iet.onrender.com/api");
-  list.push("https://inventoryappfrontend.vercel.app/api");
 
-  // 4. WEB LOCALHOST / SAME-ORIGIN FALLBACKS
+  // 4. LOCAL BACKEND FALLBACKS (Port 8080)
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    const { protocol, hostname, origin } = window.location;
-    list.push("/api");
-    if (origin) list.push(`${origin}/api`);
+    const { protocol, hostname } = window.location;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       list.push("http://localhost:8080/api");
     } else if (
@@ -63,13 +59,12 @@ function getCandidateBases(): string[] {
       hostname.startsWith("172.")
     ) {
       list.push(`${protocol}//${hostname}:8080/api`);
-    } else if (hostname.includes("-8081.")) {
-      list.push(`${protocol}//${hostname.replace("-8081.", "-8080.")}/api`);
     }
+  } else {
+    // Android emulator / native localhost
+    list.push("http://localhost:8080/api");
+    list.push("http://10.0.2.2:8080/api");
   }
-
-  // 5. LOCAL DEV FALLBACK FOR EMULATORS & NATIVE
-  list.push("http://localhost:8080/api");
 
   const filtered = list.filter(Boolean);
   return [...new Set(filtered.length ? filtered : ["/api"])];

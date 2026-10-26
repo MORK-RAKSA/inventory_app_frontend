@@ -9,7 +9,7 @@
       "destination": "https://inventory-app-backend-5iet.onrender.com/api/$1"
     },
     {
-      "source": "/((?!_expo/|assets/|favicon.ico).*)",
+      "source": "/((?!api/|_expo/|assets/|favicon.ico).*)",
       "destination": "/index.html"
     }
   ]
