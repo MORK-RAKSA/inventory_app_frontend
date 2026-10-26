@@ -74,11 +74,11 @@ export function BatchIntakePage({ portal }: { portal: PortalController }) {
       id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       barcode: raw,
       name: existing?.name || '',
-      category: existing?.category || 'General',
+      category: existing?.category || categories.find((c) => c !== 'All') || '',
       ccy: 'KHR' as const,
       price: existing ? String(roundKhr(existing.priceUsd * rate)) : '',
       stock: '1',
-      uomConfigId: selectedUomConfigId || 'uom-case-24',
+      uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
       wholesalePrice: existing?.wholesalePriceUsd
         ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 24) * rate))
         : '',
@@ -114,11 +114,11 @@ export function BatchIntakePage({ portal }: { portal: PortalController }) {
       id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       barcode: '',
       name: '',
-      category: 'General',
+      category: categories.find((c) => c !== 'All') || '',
       ccy: 'KHR' as const,
       price: '',
       stock: '1',
-      uomConfigId: selectedUomConfigId || 'uom-case-24',
+      uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
       wholesalePrice: '',
     };
     setBatchRows((prev) => [newRow, ...prev]);

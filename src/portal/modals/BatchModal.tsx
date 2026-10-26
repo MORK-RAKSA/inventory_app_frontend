@@ -30,11 +30,11 @@ export function BatchModal({ portal }: { portal: PortalController }) {
         id: `row-${Date.now()}-${prev.length + 1}`,
         barcode: '',
         name: '',
-        category: 'General',
+        category: categories.find((c) => c !== 'All') || '',
         ccy: 'KHR',
         price: '',
         stock: '',
-        uomConfigId: selectedUomConfigId || 'uom-case-24',
+        uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
         wholesalePrice: '',
       },
     ]);
@@ -47,11 +47,11 @@ export function BatchModal({ portal }: { portal: PortalController }) {
         id: `row-${now}-${prev.length + i + 1}`,
         barcode: '',
         name: '',
-        category: 'General',
+        category: categories.find((c) => c !== 'All') || '',
         ccy: 'KHR' as const,
         price: '',
         stock: '',
-        uomConfigId: selectedUomConfigId || 'uom-case-24',
+        uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
         wholesalePrice: '',
       }));
       return [...prev, ...added];

@@ -4,20 +4,6 @@ import { Press } from '../../motion';
 import { P } from '../theme';
 import type { PortalController } from '../usePortalController';
 
-const PACKAGING_OPTIONS = [
-  'Case',
-  'Carton',
-  'Pack',
-  'Box',
-  'Dozen',
-  'Half Case',
-  'Bundle',
-  'Bag',
-  'Crate',
-  'Pallet',
-  'Container',
-];
-
 export function UomModal({ portal }: { portal: PortalController }) {
   const {
     availableBaseUnits,
@@ -33,6 +19,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
     setUomFormName,
     showUomModal,
     tr,
+    uomConfigs,
     uomFormBaseUnit,
     uomFormCaseQty,
     uomFormCaseUnitName,
@@ -42,9 +29,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
 
   const baseUnitOptions = Array.from(
     new Set([
-      ...(availableBaseUnits && availableBaseUnits.length > 0
-        ? availableBaseUnits
-        : ['Piece', 'Can', 'Bottle', 'Box', 'Pack']),
+      ...(availableBaseUnits || []),
       editingUomConfig?.baseUnit,
       uomFormBaseUnit,
     ].filter(Boolean))
@@ -52,7 +37,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
 
   const packagingOptions = Array.from(
     new Set([
-      ...PACKAGING_OPTIONS,
+      ...(uomConfigs || []).map((u) => u.caseUnitName?.trim()).filter(Boolean),
       uomFormCaseUnitName,
     ].filter(Boolean))
   );

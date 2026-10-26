@@ -783,14 +783,12 @@ export function SettingsTab({ portal }: { portal: PortalController }) {
                   }}
                 >
                   <Text style={{ color: P.text, fontSize: 12.5, fontWeight: '700' }}>{unit}</Text>
-                  {configuredBaseUnits.length > 1 && (
-                    <Press
-                      onPress={() => removeConfiguredBaseUnit(unit)}
-                      style={{ padding: 2, borderRadius: 4 }}
-                    >
-                      <X size={13} color={P.muted} />
-                    </Press>
-                  )}
+                  <Press
+                    onPress={() => removeConfiguredBaseUnit(unit)}
+                    style={{ padding: 2, borderRadius: 4 }}
+                  >
+                    <X size={13} color={P.muted} />
+                  </Press>
                 </View>
               ))}
             </View>
@@ -873,14 +871,12 @@ export function SettingsTab({ portal }: { portal: PortalController }) {
                   }}
                 >
                   <Text style={{ color: P.text, fontSize: 12.5, fontWeight: '700' }}>{cat}</Text>
-                  {configuredCategories.length > 1 && cat !== 'General' && (
-                    <Press
-                      onPress={() => removeConfiguredCategory(cat)}
-                      style={{ padding: 2, borderRadius: 4 }}
-                    >
-                      <X size={13} color={P.muted} />
-                    </Press>
-                  )}
+                  <Press
+                    onPress={() => removeConfiguredCategory(cat)}
+                    style={{ padding: 2, borderRadius: 4 }}
+                  >
+                    <X size={13} color={P.muted} />
+                  </Press>
                 </View>
               ))}
             </View>

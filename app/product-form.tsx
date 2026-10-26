@@ -31,7 +31,7 @@ import {
   Boxes,
   Calendar,
 } from 'lucide-react-native';
-import { api, ApiError, DEFAULT_UOM_CONFIGS, Product, UomConfig } from '../src/api';
+import { api, ApiError, Product, Settings, UomConfig } from '../src/api';
 import { useLiveData } from '../src/hooks/useLiveData';
 import { useLanguage } from '../src/i18n';
 import { useToast } from '../src/toast';
@@ -49,22 +49,6 @@ import { ProductImage, storeProductImage } from '../src/components/ProductImage'
 import { CalendarPickerModal } from '../src/components/CalendarPickerModal';
 import { canonicalBarcode, sameBarcode } from '../src/barcode';
 
-const WHOLESALE_UOM_PRESETS = [
-  { label: 'Case of 24 (កេស ២៤)', name: 'Case', qty: 24 },
-  { label: 'Case of 12 (កេស ១២)', name: 'Case', qty: 12 },
-  { label: 'Pack of 6 (យួរ ៦)', name: 'Pack', qty: 6 },
-  { label: 'Box of 1 (ប្រអប់ ១)', name: 'Box', qty: 1 },
-  { label: 'Unit only (រាយ)', name: 'Piece', qty: 1 },
-];
-
-const BASE_UNIT_PRESETS = [
-  { label: 'Can (កំប៉ុង)', value: 'Can' },
-  { label: 'Bottle (ដប)', value: 'Bottle' },
-  { label: 'Piece (ដុំ)', value: 'Piece' },
-  { label: 'Pack (កញ្ចប់)', value: 'Pack' },
-  { label: 'Box (ប្រអប់)', value: 'Box' },
-];
-
 export default function ProductFormScreen() {
   const router = useRouter();
   const { tr, t } = useLanguage();
@@ -74,33 +58,49 @@ export default function ProductFormScreen() {
 
   const { products, rate, refresh } = useLiveData('products');
 
-  const [configuredBaseUnits, setConfiguredBaseUnits] = useState<string[]>([
-    'Can', 'Bottle', 'Piece', 'Box', 'Pack', 'Kg', 'Litre', 'Roll', 'Cup', 'Bag'
-  ]);
+  const [configuredBaseUnits, setConfiguredBaseUnits] = useState<string[]>([]);
   const [configuredCategories, setConfiguredCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem('retailflow_configured_base_units'),
-      AsyncStorage.getItem('retailflow_configured_categories'),
-    ]).then(([savedUnits, savedCats]) => {
-      if (savedUnits) {
-        try {
-          const parsed = JSON.parse(savedUnits);
-          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredBaseUnits(parsed);
-        } catch (_) {}
-      }
-      if (savedCats) {
-        try {
-          const parsed = JSON.parse(savedCats);
-          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredCategories(parsed);
-        } catch (_) {}
-      }
-    });
+    // Load from DB first
+    void api<Settings>('/settings')
+      .then((cfg) => {
+        if (Array.isArray(cfg?.baseUnits)) {
+          setConfiguredBaseUnits(cfg.baseUnits);
+          void AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(cfg.baseUnits));
+        }
+        if (Array.isArray(cfg?.categories)) {
+          setConfiguredCategories(cfg.categories);
+          void AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(cfg.categories));
+        }
+      })
+      .catch(() => {
+        // Fallback to offline cache
+        Promise.all([
+          AsyncStorage.getItem('retailflow_configured_base_units'),
+          AsyncStorage.getItem('retailflow_configured_categories'),
+        ]).then(([savedUnits, savedCats]) => {
+          if (savedUnits) {
+            try {
+              const parsed = JSON.parse(savedUnits);
+              if (Array.isArray(parsed)) setConfiguredBaseUnits(parsed);
+            } catch (_) {}
+          }
+          if (savedCats) {
+            try {
+              const parsed = JSON.parse(savedCats);
+              if (Array.isArray(parsed)) setConfiguredCategories(parsed);
+            } catch (_) {}
+          }
+        });
+      });
   }, []);
 
   const categories = useMemo(() => {
-    const set = new Set<string>(['General', ...configuredCategories]);
+    if (configuredCategories && configuredCategories.length > 0) {
+      return configuredCategories;
+    }
+    const set = new Set<string>();
     products.forEach((p) => {
       if (p.category?.trim()) set.add(p.category.trim());
     });
@@ -110,7 +110,7 @@ export default function ProductFormScreen() {
   // Form State
   const [name, setName] = useState('');
   const [barcode, setBarcode] = useState(params.barcode || '');
-  const [category, setCategory] = useState('General');
+  const [category, setCategory] = useState('');
   const [currency, setCurrency] = useState<'KHR' | 'USD'>('KHR');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('10');
@@ -123,13 +123,16 @@ export default function ProductFormScreen() {
   const [wholesaleCurrency, setWholesaleCurrency] = useState<'KHR' | 'USD'>('KHR');
   const [wholesalePrice, setWholesalePrice] = useState('');
   const [wholesaleMinQty, setWholesaleMinQty] = useState('1');
-  const [baseUnit, setBaseUnit] = useState('Piece');
-  const [caseUnitName, setCaseUnitName] = useState('Case');
+  const [baseUnit, setBaseUnit] = useState('');
+  const [caseUnitName, setCaseUnitName] = useState('');
   const [caseQty, setCaseQty] = useState('24');
-  const [uomTemplates, setUomTemplates] = useState<UomConfig[]>(DEFAULT_UOM_CONFIGS);
+  const [uomTemplates, setUomTemplates] = useState<UomConfig[]>([]);
 
   const availableBaseUnits = useMemo(() => {
-    const set = new Set<string>(configuredBaseUnits);
+    if (configuredBaseUnits && configuredBaseUnits.length > 0) {
+      return configuredBaseUnits;
+    }
+    const set = new Set<string>();
     uomTemplates.forEach((u) => {
       if (u.baseUnit?.trim()) set.add(u.baseUnit.trim());
     });
@@ -139,7 +142,7 @@ export default function ProductFormScreen() {
   useEffect(() => {
     void api<UomConfig[]>('/uom')
       .then((list) => {
-        if (Array.isArray(list) && list.length > 0) setUomTemplates(list);
+        if (Array.isArray(list)) setUomTemplates(list);
       })
       .catch(() => {});
   }, []);

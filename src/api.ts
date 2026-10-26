@@ -37,16 +37,7 @@ export interface UomConfig {
   createdAt?: number;
 }
 
-export const DEFAULT_UOM_CONFIGS: UomConfig[] = [
-  { id: 'uom-case-24', name: 'Case of 24', baseUnit: 'Can', caseUnitName: 'Case', caseQty: 24, description: 'Standard 24-can beverage or grocery case' },
-  { id: 'uom-case-12', name: 'Case of 12', baseUnit: 'Bottle', caseUnitName: 'Case', caseQty: 12, description: '12-bottle beverage, oil, or sauce case' },
-  { id: 'uom-pack-6', name: 'Pack of 6', baseUnit: 'Can', caseUnitName: 'Pack', caseQty: 6, description: '6-can or 6-bottle shrink-wrap pack' },
-  { id: 'uom-box-1', name: 'Box of 1', baseUnit: 'Piece', caseUnitName: 'Box', caseQty: 1, description: 'Single boxed retail piece' },
-  { id: 'uom-carton-12', name: 'Carton of 12', baseUnit: 'Bottle', caseUnitName: 'Carton', caseQty: 12, description: '12-bottle or 12-can mixed carton' },
-  { id: 'uom-half-case', name: 'Half Case', baseUnit: 'Can', caseUnitName: 'Case', caseQty: 12, description: 'Half of a standard case (12 units)' },
-  { id: 'uom-dozen', name: 'Dozen', baseUnit: 'Piece', caseUnitName: 'Dozen', caseQty: 12, description: '12 individual pieces' },
-  { id: 'uom-half-dozen', name: 'Half Dozen', baseUnit: 'Piece', caseUnitName: 'Dozen', caseQty: 6, description: '6 individual pieces' },
-];
+export const DEFAULT_UOM_CONFIGS: UomConfig[] = [];
 
 export interface AppUser {
   id: string;

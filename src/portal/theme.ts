@@ -77,4 +77,4 @@ export const glassInset: ViewStyle = {
   borderColor: 'rgba(255, 255, 255, 0.7)',
 };
 
-export const DEFAULT_CATEGORIES = ['General', 'Beverages', 'Snacks', 'Dairy', 'Household', 'Personal Care'];
+export const DEFAULT_CATEGORIES: string[] = [];

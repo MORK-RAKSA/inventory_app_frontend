@@ -9,7 +9,7 @@ import {
   ShoppingCart,
   SlidersHorizontal,
 } from 'lucide-react-native';
-import { api, AppUser, DEFAULT_UOM_CONFIGS, Product, Sale, Settings, UomConfig } from '../api';
+import { api, AppUser, Product, Sale, Settings, UomConfig } from '../api';
 import { getUsername, getUserRole, getFullName } from '../auth';
 import { khr, roundKhr } from '../theme';
 import { useLanguage } from '../i18n';
@@ -24,7 +24,7 @@ import {
   onRemoteScannerScan,
   subscribeLiveActivity,
 } from '../liveSync';
-import { DEFAULT_CATEGORIES } from './theme';
+
 import type { PortalTab } from './types';
 
 /**
@@ -79,17 +79,17 @@ export function usePortalController() {
   const [formWholesaleMinQty, setFormWholesaleMinQty] = useState('1');
   const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
-  const [selectedUomConfigId, setSelectedUomConfigId] = useState<string>('uom-case-24');
+  const [selectedUomConfigId, setSelectedUomConfigId] = useState<string>('');
 
   // UOM Configuration & Management state
-  const [uomConfigs, setUomConfigs] = useState<UomConfig[]>(DEFAULT_UOM_CONFIGS);
+  const [uomConfigs, setUomConfigs] = useState<UomConfig[]>([]);
   const [uomSearch, setUomSearch] = useState('');
   const [showUomModal, setShowUomModal] = useState(false);
   const [editingUomConfig, setEditingUomConfig] = useState<UomConfig | null>(null);
-  const [uomFormName, setUomFormName] = useState('Case of 24');
-  const [uomFormBaseUnit, setUomFormBaseUnit] = useState('Can');
-  const [uomFormCaseUnitName, setUomFormCaseUnitName] = useState('Case');
-  const [uomFormCaseQty, setUomFormCaseQty] = useState('24');
+  const [uomFormName, setUomFormName] = useState('');
+  const [uomFormBaseUnit, setUomFormBaseUnit] = useState('');
+  const [uomFormCaseUnitName, setUomFormCaseUnitName] = useState('');
+  const [uomFormCaseQty, setUomFormCaseQty] = useState('');
   const [uomFormDescription, setUomFormDescription] = useState('');
   const [savingUom, setSavingUom] = useState(false);
 
@@ -259,10 +259,10 @@ export function usePortalController() {
           setRate(roundedRate);
           setRateInput(String(roundedRate));
         }
-        if (Array.isArray(cfg?.categories) && cfg.categories.length > 0) {
+        if (Array.isArray(cfg?.categories)) {
           setConfiguredCategories(cfg.categories);
         }
-        if (Array.isArray(cfg?.baseUnits) && cfg.baseUnits.length > 0) {
+        if (Array.isArray(cfg?.baseUnits)) {
           setConfiguredBaseUnits(cfg.baseUnits);
         }
       } catch (e: any) {
@@ -406,19 +406,18 @@ export function usePortalController() {
     setFormWholesaleCcy('KHR');
     setFormWholesalePrice('');
     setFormImageUrl(null);
-    const defBase = (configuredBaseUnits && configuredBaseUnits[0]) || 'Can';
+    const defBase = (configuredBaseUnits && configuredBaseUnits[0]) || '';
     const matchingUom =
       uomConfigs.find(
-        (u) => u.baseUnit && u.baseUnit.toLowerCase() === defBase.toLowerCase()
+        (u) => defBase && u.baseUnit && u.baseUnit.toLowerCase() === defBase.toLowerCase()
       ) ||
-      uomConfigs[0] ||
-      DEFAULT_UOM_CONFIGS[0];
+      uomConfigs[0];
 
-    setSelectedUomConfigId(matchingUom?.id || 'uom-case-24');
-    setFormBaseUnit(defBase);
-    setFormCaseUnitName(matchingUom?.caseUnitName || 'Case');
-    setFormCaseQty(String(matchingUom?.caseQty || 24));
-    setFormCategory((configuredCategories && configuredCategories[0]) || 'General');
+    setSelectedUomConfigId(matchingUom?.id || '');
+    setFormBaseUnit(defBase || matchingUom?.baseUnit || '');
+    setFormCaseUnitName(matchingUom?.caseUnitName || '');
+    setFormCaseQty(matchingUom?.caseQty ? String(matchingUom.caseQty) : '');
+    setFormCategory((configuredCategories && configuredCategories[0]) || '');
     setFormWholesaleMinQty('1');
     setShowProductModal(false);
     setTab('product-form');
@@ -450,9 +449,9 @@ export function usePortalController() {
       setUomFormDescription(existing.description || '');
     } else {
       setEditingUomConfig(null);
-      setUomFormName('Case of 24');
-      setUomFormBaseUnit('Can');
-      setUomFormCaseUnitName('Case');
+      setUomFormName('');
+      setUomFormBaseUnit((configuredBaseUnits && configuredBaseUnits[0]) || '');
+      setUomFormCaseUnitName('');
       setUomFormCaseQty('24');
       setUomFormDescription('');
     }
@@ -690,8 +689,8 @@ export function usePortalController() {
         (u) =>
           u.caseQty === (p.caseQty || 24) ||
           (p.caseUnitName && u.caseUnitName.toLowerCase() === p.caseUnitName.toLowerCase())
-      ) || uomConfigs[0] || DEFAULT_UOM_CONFIGS[0];
-    setSelectedUomConfigId(matchingUom?.id || 'uom-case-24');
+      ) || uomConfigs[0];
+    setSelectedUomConfigId(matchingUom?.id || '');
     setShowProductModal(false);
     setTab('product-form');
   }
@@ -732,7 +731,7 @@ export function usePortalController() {
             ccy: 'KHR' as const,
             price: existing ? String(roundKhr(existing.priceUsd * rate)) : '',
             stock: '1',
-            uomConfigId: selectedUomConfigId || 'uom-case-24',
+            uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
             wholesalePrice: existing?.wholesalePriceUsd
               ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 24) * rate))
               : '',
@@ -1069,7 +1068,7 @@ export function usePortalController() {
     products.forEach((p) => {
       if (p.baseUnit?.trim()) set.add(p.baseUnit.trim());
     });
-    return set.size > 0 ? Array.from(set) : ['Can', 'Bottle', 'Piece', 'Box'];
+    return Array.from(set);
   }, [configuredBaseUnits, editingProduct, uomConfigs, products]);
 
   const activeSales = useMemo(() => sales.filter((s) => s.status !== 'ARCHIVED'), [sales]);
