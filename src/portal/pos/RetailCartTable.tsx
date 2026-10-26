@@ -42,7 +42,7 @@ export function RetailCartTable({
   }
 
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 6 }}>
       <View
         style={{
           flexDirection: 'row',

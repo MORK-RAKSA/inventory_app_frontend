@@ -105,6 +105,7 @@ export function usePortalController() {
       ccy: 'KHR' | 'USD';
       price: string;
       stock: string;
+      baseUnit?: string;
       uomConfigId: string;
       wholesalePrice: string;
     }>
@@ -257,6 +258,12 @@ export function usePortalController() {
           const roundedRate = roundKhr(Number(cfg.usdToKhr));
           setRate(roundedRate);
           setRateInput(String(roundedRate));
+        }
+        if (Array.isArray(cfg?.categories) && cfg.categories.length > 0) {
+          setConfiguredCategories(cfg.categories);
+        }
+        if (Array.isArray(cfg?.baseUnits) && cfg.baseUnits.length > 0) {
+          setConfiguredBaseUnits(cfg.baseUnits);
         }
       } catch (e: any) {
         if (!silent)
@@ -590,7 +597,7 @@ export function usePortalController() {
           currency: r.ccy,
           price: Number(r.price) || 4000,
           stock: Math.max(0, parseInt(r.stock, 10) || 0),
-          baseUnit: uomCfg?.baseUnit || 'Piece',
+          baseUnit: r.baseUnit || uomCfg?.baseUnit || 'Piece',
           caseUnitName: uomCfg?.caseUnitName || 'Case',
           caseQty: cQty,
           wholesalePrice: casePriceRaw,
@@ -898,6 +905,7 @@ export function usePortalController() {
       if (prev.some((u) => u.toLowerCase() === clean.toLowerCase())) return prev;
       const next = [...prev, clean];
       AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(next)).catch(() => {});
+      void api('/settings', { method: 'PUT', body: JSON.stringify({ baseUnits: next }) }).catch(() => {});
       return next;
     });
     toast.show(tr(`Added base unit: ${clean}`, `បានបន្ថែមឯកតាមូលដ្ឋាន៖ ${clean}`), { tone: 'success' });
@@ -907,6 +915,7 @@ export function usePortalController() {
     setConfiguredBaseUnits((prev) => {
       const next = prev.filter((u) => u.toLowerCase() !== unit.toLowerCase());
       AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(next)).catch(() => {});
+      void api('/settings', { method: 'PUT', body: JSON.stringify({ baseUnits: next }) }).catch(() => {});
       return next;
     });
   };
@@ -918,6 +927,7 @@ export function usePortalController() {
       if (prev.some((c) => c.toLowerCase() === clean.toLowerCase())) return prev;
       const next = [...prev, clean];
       AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(next)).catch(() => {});
+      void api('/settings', { method: 'PUT', body: JSON.stringify({ categories: next }) }).catch(() => {});
       return next;
     });
     toast.show(tr(`Added category: ${clean}`, `បានបន្ថែមក្រុមទំនិញ៖ ${clean}`), { tone: 'success' });
@@ -927,6 +937,7 @@ export function usePortalController() {
     setConfiguredCategories((prev) => {
       const next = prev.filter((c) => c.toLowerCase() !== cat.toLowerCase());
       AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(next)).catch(() => {});
+      void api('/settings', { method: 'PUT', body: JSON.stringify({ categories: next }) }).catch(() => {});
       return next;
     });
   };
@@ -1128,6 +1139,11 @@ export function usePortalController() {
   const filteredPosProducts = useMemo(() => {
     const q = posSearch.trim().toLowerCase();
     return products.filter((p) => {
+      // If in wholesale mode, only list products configured for wholesale
+      if (posMode === 'wholesale') {
+        const hasWh = Boolean(p.wholesalePriceUsd && p.wholesalePriceUsd > 0);
+        if (!hasWh) return false;
+      }
       if (posCat !== 'All' && p.category !== posCat) return false;
       if (!q) return true;
       return (
@@ -1136,7 +1152,7 @@ export function usePortalController() {
         p.category.toLowerCase().includes(q)
       );
     });
-  }, [products, posSearch, posCat]);
+  }, [products, posSearch, posCat, posMode]);
 
   // Filtered Sales
   const filteredSales = useMemo(() => {

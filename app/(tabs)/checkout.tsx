@@ -386,14 +386,16 @@ export default function Checkout() {
   const list = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products
-      .filter(
-        (p) =>
-          (catFilter === 'All' || p.category === catFilter) &&
-          (!q ||
-            (p.name + ' ' + (p.barcode || '') + ' ' + p.category)
-              .toLowerCase()
-              .includes(q))
-      )
+      .filter((p) => {
+        if (isWholesale && !hasWholesale(p)) return false;
+        if (catFilter !== 'All' && p.category !== catFilter) return false;
+        if (!q) return true;
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.barcode || '').toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q)
+        );
+      })
       .sort((a, b) => {
         // Put items currently in cart or in-stock first for faster finding
         const aInCart = getTotalUnits(a) > 0 ? 1 : 0;

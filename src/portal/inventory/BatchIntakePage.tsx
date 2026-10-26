@@ -24,6 +24,7 @@ import type { PortalController } from '../usePortalController';
 
 export function BatchIntakePage({ portal }: { portal: PortalController }) {
   const {
+    availableBaseUnits,
     batchRows,
     categories,
     commitBatchAction,
@@ -685,36 +686,96 @@ export function BatchIntakePage({ portal }: { portal: PortalController }) {
                     paddingTop: 4,
                   }}
                 >
-                  {/* UOM Template Selector */}
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                    <Text style={{ color: P.muted, fontSize: 11, fontWeight: '700' }}>UOM:</Text>
-                    {uomConfigs.map((u) => {
-                      const isSel = row.uomConfigId === u.id;
-                      return (
-                        <Press
-                          key={u.id}
-                          onPress={() => updateRow(row.id, { uomConfigId: u.id })}
+                  {/* Base Unit & UOM Selectors Filtered by Config */}
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* 1. Base Unit Select Dropdown */}
+                    <View style={{ width: 110 }}>
+                      <Text style={{ color: P.muted, fontSize: 10, fontWeight: '700', marginBottom: 2 }}>
+                        {tr('BASE UNIT', 'ឯកតារាយ')}
+                      </Text>
+                      {Platform.OS === 'web' ? (
+                        /* @ts-ignore */
+                        <select
+                          value={
+                            row.baseUnit ||
+                            uomConfigs.find((u) => u.id === row.uomConfigId)?.baseUnit ||
+                            'Can'
+                          }
+                          onChange={(e: any) => {
+                            const newBase = e.target.value;
+                            const matching = uomConfigs.find(
+                              (u) => u.baseUnit && u.baseUnit.toLowerCase() === newBase.toLowerCase()
+                            );
+                            updateRow(row.id, {
+                              baseUnit: newBase,
+                              uomConfigId: matching ? matching.id : row.uomConfigId,
+                            });
+                          }}
                           style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
+                            height: 34,
                             borderRadius: 6,
-                            backgroundColor: isSel ? P.primaryLight : P.surfaceAlt,
-                            borderWidth: 1,
-                            borderColor: isSel ? P.primary : P.border,
+                            border: `1px solid ${P.borderStrong}`,
+                            backgroundColor: P.surfaceAlt,
+                            padding: '0 8px',
+                            color: P.text,
+                            fontSize: 12,
+                            fontWeight: '700',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            width: '100%',
                           }}
                         >
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: isSel ? '800' : '600',
-                              color: isSel ? P.primary : P.textSub,
-                            }}
-                          >
-                            {u.name}
-                          </Text>
-                        </Press>
-                      );
-                    })}
+                          {availableBaseUnits.map((u) => (
+                            <option key={u} value={u}>
+                              {u}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </View>
+
+                    {/* 2. Packaging UOM Select Dropdown (Filtered to only UOMs configured with Base Unit!) */}
+                    <View style={{ minWidth: 150 }}>
+                      <Text style={{ color: P.muted, fontSize: 10, fontWeight: '700', marginBottom: 2 }}>
+                        {tr('PACKAGING UOM', 'ឯកតាដុំធំ')}
+                      </Text>
+                      {Platform.OS === 'web' ? (
+                        /* @ts-ignore */
+                        <select
+                          value={row.uomConfigId}
+                          onChange={(e: any) => updateRow(row.id, { uomConfigId: e.target.value })}
+                          style={{
+                            height: 34,
+                            borderRadius: 6,
+                            border: `1.5px solid ${P.primary}`,
+                            backgroundColor: P.primaryLight,
+                            padding: '0 8px',
+                            color: P.primary,
+                            fontSize: 12,
+                            fontWeight: '800',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            width: '100%',
+                          }}
+                        >
+                          {(() => {
+                            const currentBase =
+                              row.baseUnit ||
+                              uomConfigs.find((u) => u.id === row.uomConfigId)?.baseUnit ||
+                              'Can';
+                            const filtered = uomConfigs.filter(
+                              (u) => !u.baseUnit || u.baseUnit.toLowerCase() === currentBase.toLowerCase()
+                            );
+                            const list = filtered.length > 0 ? filtered : uomConfigs;
+                            return list.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name} (1 {u.caseUnitName} = {u.caseQty} {u.baseUnit})
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      ) : null}
+                    </View>
                   </View>
 
                   {/* Pricing Inputs & Stepper */}

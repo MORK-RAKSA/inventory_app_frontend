@@ -50,7 +50,7 @@ export function WholesaleCartTable({
   }
 
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 6 }}>
       <View
         style={{
           flexDirection: 'row',
@@ -68,9 +68,9 @@ export function WholesaleCartTable({
         </Text>
         <Text
           style={{
-            width: 82,
+            width: 88,
             textAlign: 'center',
-            color: P.muted,
+            color: '#4F46E5',
             fontSize: 11,
             fontWeight: '800',
           }}
@@ -79,9 +79,9 @@ export function WholesaleCartTable({
         </Text>
         <Text
           style={{
-            width: 76,
+            width: 82,
             textAlign: 'center',
-            color: P.muted,
+            color: '#0D9488',
             fontSize: 11,
             fontWeight: '800',
           }}
@@ -152,104 +152,110 @@ export function WholesaleCartTable({
               </View>
             </View>
 
-            <View
-              style={{
-                width: 82,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
-            >
-              <Press
-                onPress={() => onAdd(line.product, -1, 'case')}
+            {/* Cases Stepper */}
+            <View style={{ width: 88, alignItems: 'center', justifyContent: 'center' }}>
+              <View
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 5,
-                  backgroundColor: P.surface,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#EEF2FF',
+                  borderRadius: 8,
                   borderWidth: 1,
-                  borderColor: P.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  borderColor: '#C7D2FE',
+                  padding: 2,
                 }}
               >
-                <Minus size={12} color={P.text} />
-              </Press>
-              <Text
-                style={{
-                  minWidth: 20,
-                  textAlign: 'center',
-                  fontWeight: '800',
-                  color: P.text,
-                  fontSize: 12.5,
-                }}
-              >
-                {line.cases}c
-              </Text>
-              <Press
-                onPress={() => onAdd(line.product, 1, 'case')}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 5,
-                  backgroundColor: P.primary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Plus size={12} color="#FFFFFF" />
-              </Press>
+                <Press
+                  onPress={() => onAdd(line.product, -1, 'case')}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    backgroundColor: '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Minus size={11} color="#4338CA" />
+                </Press>
+                <Text
+                  style={{
+                    minWidth: 24,
+                    textAlign: 'center',
+                    fontWeight: '800',
+                    color: '#4338CA',
+                    fontSize: 12.5,
+                  }}
+                >
+                  {line.cases}
+                </Text>
+                <Press
+                  onPress={() => onAdd(line.product, 1, 'case')}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    backgroundColor: '#4F46E5',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Plus size={11} color="#FFFFFF" />
+                </Press>
+              </View>
             </View>
 
-            <View
-              style={{
-                width: 76,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
-            >
-              <Press
-                onPress={() => onAdd(line.product, -1, 'loose')}
+            {/* Loose Stepper */}
+            <View style={{ width: 82, alignItems: 'center', justifyContent: 'center' }}>
+              <View
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 5,
-                  backgroundColor: P.surface,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#F0FDFA',
+                  borderRadius: 8,
                   borderWidth: 1,
-                  borderColor: P.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  borderColor: '#99F6E4',
+                  padding: 2,
                 }}
               >
-                <Minus size={12} color={P.text} />
-              </Press>
-              <Text
-                style={{
-                  minWidth: 18,
-                  textAlign: 'center',
-                  fontWeight: '800',
-                  color: P.text,
-                  fontSize: 12.5,
-                }}
-              >
-                {line.loose}u
-              </Text>
-              <Press
-                onPress={() => onAdd(line.product, 1, 'loose')}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 5,
-                  backgroundColor: P.teal,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Plus size={12} color="#FFFFFF" />
-              </Press>
+                <Press
+                  onPress={() => onAdd(line.product, -1, 'loose')}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    backgroundColor: '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Minus size={11} color="#0F766E" />
+                </Press>
+                <Text
+                  style={{
+                    minWidth: 24,
+                    textAlign: 'center',
+                    fontWeight: '800',
+                    color: '#0F766E',
+                    fontSize: 12.5,
+                  }}
+                >
+                  {line.loose}
+                </Text>
+                <Press
+                  onPress={() => onAdd(line.product, 1, 'loose')}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    backgroundColor: '#0D9488',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Plus size={11} color="#FFFFFF" />
+                </Press>
+              </View>
             </View>
 
             <View style={{ flex: 1.1 }}>

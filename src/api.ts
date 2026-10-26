@@ -86,6 +86,8 @@ export interface Sale {
 
 export interface Settings {
   usdToKhr: number;
+  categories?: string[];
+  baseUnits?: string[];
 }
 
 export interface BatchResult {

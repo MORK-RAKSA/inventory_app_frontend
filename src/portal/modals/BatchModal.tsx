@@ -8,7 +8,9 @@ import { BatchRow } from './BatchRow';
 
 export function BatchModal({ portal }: { portal: PortalController }) {
   const {
+    availableBaseUnits,
     batchRows,
+    categories,
     commitBatchAction,
     committingBatch,
     openCreateUomModal,
@@ -305,6 +307,8 @@ export function BatchModal({ portal }: { portal: PortalController }) {
                     index={idx}
                     canDelete={true}
                     uomConfigs={uomConfigs}
+                    categories={categories}
+                    availableBaseUnits={availableBaseUnits}
                     onChange={(rowId, patch) =>
                       setBatchRows((prev) =>
                         prev.map((r) => (r.id === rowId ? { ...r, ...patch } : r))

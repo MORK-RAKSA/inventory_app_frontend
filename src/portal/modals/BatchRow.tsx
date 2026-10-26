@@ -1,4 +1,4 @@
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { Platform, Text, TextInput, View } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { UomConfig } from '../../api';
 import { Press } from '../../motion';
@@ -23,6 +23,8 @@ export function BatchRow({
   index,
   canDelete,
   uomConfigs,
+  categories = [],
+  availableBaseUnits = [],
   onChange,
   onResolveBarcode,
   onOpenUomConfig,
@@ -32,11 +34,24 @@ export function BatchRow({
   index: number;
   canDelete: boolean;
   uomConfigs: UomConfig[];
+  categories?: string[];
+  availableBaseUnits?: string[];
   onChange: (rowId: string, patch: Partial<BatchRowState>) => void;
   onResolveBarcode: (rowId: string, barcode: string) => void;
   onOpenUomConfig: (rowId: string) => void;
   onDelete: (rowId: string) => void;
 }) {
+  const currentBase =
+    row.baseUnit ||
+    uomConfigs.find((u) => u.id === row.uomConfigId)?.baseUnit ||
+    'Can';
+
+  // UOMs filtered to only those matching this row's Base Unit
+  const filteredUoms = uomConfigs.filter(
+    (u) => !u.baseUnit || u.baseUnit.toLowerCase() === currentBase.toLowerCase()
+  );
+  const displayUoms = filteredUoms.length > 0 ? filteredUoms : uomConfigs;
+
   return (
     <View
       style={{
@@ -78,15 +93,36 @@ export function BatchRow({
         />
       </View>
 
-      {/* Category */}
-      <View style={{ flex: 1.1 }}>
-        <TextInput
-          value={row.category}
-          onChangeText={(val) => onChange(row.id, { category: val })}
-          placeholder="Category"
-          placeholderTextColor="#9CA3AF"
-          style={fieldStyle}
-        />
+      {/* Category Dropdown from Config */}
+      <View style={{ flex: 1.2 }}>
+        {Platform.OS === 'web' ? (
+          /* @ts-ignore */
+          <select
+            value={row.category || 'General'}
+            onChange={(e: any) => onChange(row.id, { category: e.target.value })}
+            style={{
+              ...fieldStyle,
+              width: '100%',
+              outline: 'none',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+          >
+            {Array.from(new Set(['General', ...categories.filter((c) => c !== 'All'), row.category].filter(Boolean))).map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <TextInput
+            value={row.category}
+            onChangeText={(val) => onChange(row.id, { category: val })}
+            placeholder="Category"
+            placeholderTextColor="#9CA3AF"
+            style={fieldStyle}
+          />
+        )}
       </View>
 
       {/* Price (KHR) */}
@@ -113,49 +149,37 @@ export function BatchRow({
         />
       </View>
 
-      {/* Packaging UOM Selector & Shortcut */}
+      {/* Packaging UOM Dropdown Filtered by Base Unit */}
       <View style={{ flex: 2.3 }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ alignItems: 'center', gap: 4 }}
-        >
-          {uomConfigs.map((u) => {
-            const isSel = row.uomConfigId === u.id;
-            return (
-              <Press
-                key={u.id}
-                onPress={() => onChange(row.id, { uomConfigId: u.id })}
-                style={{
-                  paddingHorizontal: 7,
-                  paddingVertical: 5,
-                  borderRadius: 6,
-                  backgroundColor: isSel ? P.primaryLight : P.surfaceAlt,
-                  borderWidth: 1,
-                  borderColor: isSel ? P.primary : P.border,
-                }}
-              >
-                <Text style={{ fontSize: 10.5, fontWeight: '700', color: isSel ? P.primary : P.textSub }}>
-                  {u.name}
-                </Text>
-              </Press>
-            );
-          })}
-          <Press
-            onPress={() => onOpenUomConfig(row.id)}
+        {Platform.OS === 'web' ? (
+          /* @ts-ignore */
+          <select
+            value={row.uomConfigId}
+            onChange={(e: any) => onChange(row.id, { uomConfigId: e.target.value })}
             style={{
-              paddingHorizontal: 6,
-              paddingVertical: 4,
-              borderRadius: 6,
-              backgroundColor: P.surface,
-              borderWidth: 1,
+              ...fieldStyle,
+              width: '100%',
+              outline: 'none',
+              cursor: 'pointer',
+              fontWeight: '700',
+              color: P.primary,
+              backgroundColor: P.primaryLight,
               borderColor: P.primary,
-              borderStyle: 'dashed',
             }}
           >
-            <Text style={{ fontSize: 10.5, fontWeight: '800', color: P.primary }}>+ UOM</Text>
-          </Press>
-        </ScrollView>
+            {displayUoms.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} ({u.caseQty} {u.baseUnit})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <TextInput
+            value={uomConfigs.find((u) => u.id === row.uomConfigId)?.name || 'UOM'}
+            editable={false}
+            style={fieldStyle}
+          />
+        )}
       </View>
 
       {/* Wholesale Case Price (KHR) */}
