@@ -447,24 +447,25 @@ export default function Inventory() {
   }
 
   function remove(p: Product) {
-    const doArchive = () =>
-      void api(`/products/${p.id}`, { method: 'DELETE' })
-        .then(() => {
-          toast.show(tr('Product archived', 'បានលុបទំនិញ'), { tone: 'success' });
-          return refresh();
-        })
-        .catch((e) => {
-          setError(String(e));
-          toast.show(String(e), { tone: 'error' });
-        });
+    const doArchive = async () => {
+      try {
+        await api(`/products/${p.id}`, { method: 'DELETE' });
+        toast.show(tr('Product archived', 'បានលុបទំនិញ'), { tone: 'success' });
+        void refresh();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        toast.show(msg, { tone: 'error' });
+      }
+    };
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm(`Archive ${p.name}?`))
-        doArchive();
+        void doArchive();
       return;
     }
     Alert.alert('Archive product?', `Archive ${p.name}?`, [
       { text: 'Cancel' },
-      { text: 'Archive', style: 'destructive', onPress: doArchive },
+      { text: 'Archive', style: 'destructive', onPress: () => void doArchive() },
     ]);
   }
 

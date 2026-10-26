@@ -234,14 +234,18 @@ export function usePortalController() {
       if (!silent) setRefreshing(true);
       try {
         const [p, s, cfg, uoms, uList] = await Promise.all([
-          api<Product[]>('/products'),
-          api<Sale[]>('/sales'),
-          api<Settings>('/settings'),
+          api<Product[]>('/products').catch(() => null),
+          api<Sale[]>('/sales').catch(() => null),
+          api<Settings>('/settings').catch(() => null),
           api<UomConfig[]>('/uom').catch(() => []),
           api<AppUser[]>('/users').catch(() => []),
         ]);
-        setProducts(p || []);
-        setSales(s || []);
+        if (Array.isArray(p)) {
+          setProducts(p);
+        }
+        if (Array.isArray(s)) {
+          setSales(s);
+        }
         if (Array.isArray(uoms)) {
           setUomConfigs(uoms);
         }
@@ -1458,14 +1462,19 @@ export function usePortalController() {
   }
 
   async function archiveProduct(p: Product) {
+    // Optimistically remove from state so the UI updates instantly
+    setProducts((prev) => prev.filter((item) => item.id !== p.id));
     try {
       await api(`/products/${p.id}`, { method: 'DELETE' });
+      playScan();
       toast.show(tr(`${p.name} archived`, `បានលុបទំនិញ ${p.name}`), {
         title: tr('Product archived', 'បានលុបទំនិញ'),
-        tone: 'info',
+        tone: 'success',
       });
-      await loadAll(true);
+      void loadAll(true);
     } catch (e: any) {
+      // Revert state if deletion request itself failed
+      await loadAll(true);
       playFail();
       toast.show(e?.message || 'Archive failed', {
         title: tr('Archive failed', 'លុបទំនិញបរាជ័យ'),
