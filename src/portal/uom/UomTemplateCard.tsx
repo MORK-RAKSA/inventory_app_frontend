@@ -40,7 +40,7 @@ export function UomTemplateCard({
           }}
         >
           <Text style={{ color: P.primary, fontSize: 11, fontWeight: '800' }}>
-            1 {config.caseUnitName} = {config.caseQty} {config.baseUnit}s
+            1 {config.caseUnitName || 'Case'} = {config.caseQty} {config.baseUnit || 'Piece'}s
           </Text>
         </View>
       </View>

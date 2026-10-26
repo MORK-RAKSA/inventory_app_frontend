@@ -55,6 +55,39 @@ export function UomTab({ portal }: { portal: PortalController }) {
         tr={tr}
       />
 
+      {/* UOM Summary Stats */}
+      <View style={{ marginBottom: 10, marginTop: 10 }}>
+        <Text style={{ color: P.text, fontSize: 14, fontWeight: '800' }}>
+          {tr('UOM Configuration Summary', 'ការការណ៍សម្រាប់ UOM')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
+          <View style={{ flex: 1, minWidth: 140 }}>
+            <Text style={{ color: P.muted, fontSize: 11.5, fontWeight: '700' }}>
+              {tr('Total UOM Templates', 'ជនជីរទម្រង់ UOM')}
+            </Text>
+            <Text style={{ color: P.text, fontSize: 24, fontWeight: '800' }}>
+              {uomConfigs.length}
+            </Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 140 }}>
+            <Text style={{ color: P.muted, fontSize: 11.5, fontWeight: '700' }}>
+              {tr('Active Products', 'ថ្មីរួមជាកេស')}
+            </Text>
+            <Text style={{ color: P.text, fontSize: 24, fontWeight: '800' }}>
+              {products.length}
+            </Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 140 }}>
+            <Text style={{ color: P.muted, fontSize: 11.5, fontWeight: '700' }}>
+              {tr('With Case Config', 'មានកំណត់កេសរួម')}
+            </Text>
+            <Text style={{ color: P.text, fontSize: 24, fontWeight: '800' }}>
+              {products.filter((p) => Boolean(p.caseQty)).length}
+            </Text>
+          </View>
+        </View>
+      </View>
+
       <View style={{ marginBottom: 10 }}>
         <Text style={{ color: P.text, fontSize: 15, fontWeight: '800' }}>
           {tr('Products Linked to Packaging UOM', 'ទំនិញដែលបានកំណត់ឯកតា UOM')}

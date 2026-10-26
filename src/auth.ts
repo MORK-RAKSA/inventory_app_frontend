@@ -50,6 +50,15 @@ export function resolveApiBase(): string {
   return activeBase || getCandidateBases()[0];
 }
 
+function buildUrl(base: string, path: string): string {
+  const b = base.replace(/\/+$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (b.endsWith("/api") && p.startsWith("/api/")) {
+    return `${b}${p.slice(4)}`;
+  }
+  return `${b}${p}`;
+}
+
 /**
  * Fetches against the backend API, automatically falling back across candidate URLs
  * if a tunnel/CORS "Load failed" error or HTML interstitial occurs on mobile browsers.
@@ -62,15 +71,16 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   let lastError: unknown = null;
   for (const base of candidates) {
     try {
-      const res = await fetch(base + path, init);
+      const url = buildUrl(base, path);
+      const res = await fetch(url, init);
       // Skip server bad gateways (502, 503, 504), method not allowed (405 from static edge rewrites),
       // or 404 from non-matching static routes so we fall back to working backend URLs
       if (
+        res.status === 404 ||
         res.status === 405 ||
         res.status === 502 ||
         res.status === 503 ||
-        res.status === 504 ||
-        (res.status === 404 && base !== candidates[candidates.length - 1])
+        res.status === 504
       ) {
         lastError = new Error(`Server at ${base} returned HTTP ${res.status}`);
         continue;

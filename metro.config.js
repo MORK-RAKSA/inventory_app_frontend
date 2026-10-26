@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const https = require('https');
 const http = require('http');
 
 const config = getDefaultConfig(__dirname);
@@ -8,14 +9,14 @@ config.server = {
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
       if (req.url && (req.url === '/api' || req.url.startsWith('/api/'))) {
-        const headers = { ...req.headers, host: '127.0.0.1:8080' };
+        const headers = { ...req.headers, host: 'inventoryappbackend.vercel.app' };
         delete headers.origin;
         delete headers.referer;
 
-        const proxyReq = http.request(
+        const proxyReq = https.request(
           {
-            hostname: '127.0.0.1',
-            port: 8080,
+            hostname: 'inventoryappbackend.vercel.app',
+            port: 443,
             path: req.url,
             method: req.method,
             headers,
@@ -28,7 +29,7 @@ config.server = {
 
         proxyReq.on('error', () => {
           res.writeHead(502, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ message: 'Backend server on port 8080 is unreachable' }));
+          res.end(JSON.stringify({ message: 'Backend server is unreachable' }));
         });
 
         req.pipe(proxyReq, { end: true });

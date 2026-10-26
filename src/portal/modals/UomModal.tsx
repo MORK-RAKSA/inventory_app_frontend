@@ -92,7 +92,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
                 <TextInput
                   value={uomFormBaseUnit}
                   onChangeText={setUomFormBaseUnit}
-                  placeholder="Can / Bottle / Piece"
+                  placeholder="Can / Bottle / Piece / Box / Pack"
                   placeholderTextColor="#9CA3AF"
                   style={{
                     borderWidth: 1,
@@ -112,7 +112,7 @@ export function UomModal({ portal }: { portal: PortalController }) {
                 <TextInput
                   value={uomFormCaseUnitName}
                   onChangeText={setUomFormCaseUnitName}
-                  placeholder="Case / Carton / Pack"
+                  placeholder="Case / Carton / Pack / Box"
                   placeholderTextColor="#9CA3AF"
                   style={{
                     borderWidth: 1,
