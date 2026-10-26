@@ -71,18 +71,17 @@ export function validateBarcodeRead(
 
   const expectedLength = format ? GTIN_LENGTHS[format] : undefined;
   if (expectedLength) {
-    if (code.length !== expectedLength || !isValidGTIN(code)) {
-      return { ok: false, reason: 'Invalid barcode check digit or length. Please re-align.' };
+    if (code.length !== expectedLength) {
+      return { ok: false, reason: 'Invalid barcode length. Please re-align.' };
     }
-    return { ok: true, code, format, checksumVerified: true };
+    const verified = isValidGTIN(code);
+    return { ok: true, code, format, checksumVerified: verified };
   }
 
   if (format === 'upce') {
     const upca = expandUPCE(code);
-    if (!upca || !isValidGTIN(upca)) {
-      return { ok: false, reason: 'UPC-E must have 8 valid digits including check digit.' };
-    }
-    return { ok: true, code, format, checksumVerified: true };
+    const verified = Boolean(upca && isValidGTIN(upca));
+    return { ok: true, code, format, checksumVerified: verified };
   }
 
   if (format === 'code39' && !/^[0-9A-Z\-.$/+% ]+$/i.test(code)) {
@@ -91,10 +90,8 @@ export function validateBarcodeRead(
 
   // If format is undefined but string is an 8, 12, 13, or 14-digit number, check GTIN checksum
   if (!format && /^\d+$/.test(code) && [8, 12, 13, 14].includes(code.length)) {
-    if (!isValidGTIN(code)) {
-      return { ok: false, reason: 'Invalid barcode check digit. Please re-align scanner.' };
-    }
-    return { ok: true, code, format, checksumVerified: true };
+    const verified = isValidGTIN(code);
+    return { ok: true, code, format, checksumVerified: verified };
   }
 
   return { ok: true, code, format, checksumVerified: false };

@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-const VERCEL_BACKEND_API = "https://inventoryappbackend.vercel.app/api";
+const VERCEL_BACKEND_API = "https://inventory-app-backend-5iet.onrender.com/api";
 
 function normalizeApiBase(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, "");

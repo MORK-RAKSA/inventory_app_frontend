@@ -74,7 +74,7 @@ export function PortalHeader({ portal }: { portal: PortalController }) {
         </Text>
         <Text style={{ color: P.muted, fontSize: 11.5, marginTop: 2 }} numberOfLines={1}>
           {tr(
-            `គ្រប់ហាង · EasySell (${user})`
+            `គ្រប់គ្រងហាង · EasySell (${user})`
           )}
         </Text>
       </View>

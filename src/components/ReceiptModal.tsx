@@ -113,7 +113,7 @@ function receiptHtml(s: Sale, cashier: string) {
 </head>
 <body>
   <div class="center">
-    <div class="brand-kh">គ្រប់ហាង · EasySell</div>
+    <div class="brand-kh">គ្រប់គ្រងហាង · EasySell</div>
     <div class="sub">បង្កាន់ដៃទូទាត់ប្រាក់ / OFFICIAL POS RECEIPT</div>
     <div class="sub">Phnom Penh, Cambodia</div>
   </div>
@@ -168,7 +168,7 @@ function receiptHtml(s: Sale, cashier: string) {
   <div class="dash"></div>
   <div class="center" style="margin-top:10px;">
     <div class="bold">សូមអរគុណ! សូមអញ្ជើញមកម្តងទៀត</div>
-    <div class="sub">Thank you for shopping at គ្រប់ហាង · EasySell!</div>
+    <div class="sub">Thank you for shopping at គ្រប់គ្រងហាង · EasySell!</div>
     <div class="barcode">*${esc(receiptNo)}*</div>
   </div>
 </body>
@@ -202,7 +202,7 @@ async function renderWebReceiptPngBlob(sale: Sale, cashier: string): Promise<Blo
   ctx.fillStyle = '#111827';
   ctx.textAlign = 'center';
   ctx.font = '900 20px sans-serif';
-  ctx.fillText('គ្រប់ហាង · EasySell', width / 2, 38);
+  ctx.fillText('គ្រប់គ្រងហាង · EasySell', width / 2, 38);
 
   ctx.fillStyle = '#4B5563';
   ctx.font = '700 11px sans-serif';
@@ -528,7 +528,7 @@ export function ReceiptModal({
                 fontWeight="bold"
                 textAnchor="middle"
               >
-                គ្រប់ហាង · EasySell
+                គ្រប់គ្រងហាង · EasySell
               </SvgText>
               <SvgText
                 x="190"
@@ -826,7 +826,7 @@ export function ReceiptModal({
                   <View style={styles.storeIconWrap}>
                     <Store size={20} color="#FFFFFF" />
                   </View>
-                  <Text style={styles.storeBrandText}>គ្រប់ហាង · EasySell</Text>
+                  <Text style={styles.storeBrandText}>គ្រប់គ្រងហាង · EasySell</Text>
                   <Text style={styles.storeSubText}>
                     បង្កាន់ដៃទូទាត់ប្រាក់ / OFFICIAL POS RECEIPT
                   </Text>
@@ -1030,7 +1030,7 @@ export function ReceiptModal({
                     សូមអរគុណ! សូមអញ្ជើញមកម្តងទៀត
                   </Text>
                   <Text style={styles.thankYouEn}>
-                    Thank you for shopping at គ្រប់ហាង · EasySell!
+                    Thank you for shopping at គ្រប់គ្រងហាង · EasySell!
                   </Text>
                 </View>
               </View>

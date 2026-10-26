@@ -288,7 +288,7 @@ export default function Root() {
           <Store size={30} color={C.primary} strokeWidth={2.2} />
         </View>
         <Text style={{fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5, marginBottom: 14}}>
-          គ្រប់ហាង · EasySell
+          គ្រប់គ្រងហាង · EasySell
         </Text>
         <ActivityIndicator size="small" color={C.primary} />
       </Animated.View>
@@ -368,7 +368,7 @@ export default function Root() {
                     letterSpacing: -0.7,
                   }}
                 >
-                  គ្រប់ហាង · EasySell
+                  គ្រប់គ្រងហាង · EasySell
                 </Text>
                 <Text
                   style={{
@@ -378,7 +378,7 @@ export default function Root() {
                     textAlign: 'center',
                   }}
                 >
-                  Sign in to your គ្រប់ហាង · EasySell workspace
+                  Sign in to your គ្រប់គ្រងហាង · EasySell workspace
                 </Text>
               </Rise>
 
@@ -599,7 +599,7 @@ export default function Root() {
               {/* Subtle Footer */}
               <Rise index={5} style={{alignItems: 'center', marginTop: 28}}>
                 <Text style={{color: C.faint, fontSize: 12, fontWeight: '600'}}>
-                  គ្រប់ហាង · EasySell POS · Secure Session (24h)
+                  គ្រប់គ្រងហាង · EasySell POS · Secure Session (24h)
                 </Text>
               </Rise>
             </ScrollView>

@@ -279,7 +279,7 @@ export default function SettingsPage() {
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 14}}>
             <IconBadge icon={Info} size={44} />
             <View style={{flex: 1}}>
-              <Text style={{color: C.text, fontWeight: '800'}}>គ្រប់ហាង · EasySell</Text>
+              <Text style={{color: C.text, fontWeight: '800'}}>គ្រប់គ្រងហាង · EasySell</Text>
               <Text style={{color: C.muted, fontSize: 12.5, marginTop: 2}}>{tr('API connected','បានភ្ជាប់ API')}</Text>
             </View>
           </View>

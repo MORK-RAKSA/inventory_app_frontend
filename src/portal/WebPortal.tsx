@@ -48,7 +48,7 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <ActivityIndicator size="large" color={P.primary} />
                 <Text style={{ color: P.muted, marginTop: 12, fontWeight: '700', fontSize: 12.5 }}>
-                  Loading គ្រប់ហាង · EasySell Portal...
+                  Loading គ្រប់គ្រងហាង · EasySell Portal...
                 </Text>
               </View>
             ) : (

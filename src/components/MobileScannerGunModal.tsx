@@ -232,12 +232,15 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
   }));
 
   const frameStyle = useAnimatedStyle(() => ({
-    borderColor: flash.value > 0.5 ? G.success : 'rgba(255,255,255,0.32)',
-    backgroundColor: flash.value > 0.5 ? 'rgba(16,185,129,0.16)' : 'transparent',
+    borderColor: flash.value > 0.5 ? G.success : flash.value < -0.5 ? G.danger : 'rgba(255,255,255,0.32)',
+    backgroundColor: flash.value > 0.5 ? 'rgba(16,185,129,0.16)' : flash.value < -0.5 ? 'rgba(248,113,113,0.16)' : 'transparent',
   }));
 
   function pulse(kind: 'ok' | 'fail') {
-    flash.value = withTiming(kind === 'ok' ? 1 : 0, { duration: 90 });
+    // Animated flash: 1 = success/green, -1 = fail/red, 0 = idle
+    const target = kind === 'ok' ? 1 : -1;
+    flash.value = withTiming(target, { duration: 90 });
+    // Reset after animation completes so next scan starts fresh
     setTimeout(() => {
       flash.value = withTiming(0, { duration: 260 });
     }, 240);
