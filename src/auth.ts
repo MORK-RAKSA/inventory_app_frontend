@@ -30,20 +30,31 @@ function getCandidateBases(): string[] {
   const list: string[] = [];
   const envBase = getEnvApiUrl();
 
-  // 1. PRIMARY: When an environment variable is configured, BOTH mobile and web/portal prioritize it!
+  // 1. WEB HOSTED (Vercel / Cloud): When running on web that is not localhost,
+  // prioritize same-origin relative /api so requests proxy through the host directly,
+  // avoiding cross-origin preflight / CORS issues completely.
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const { origin, hostname } = window.location;
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      list.push("/api");
+      if (origin) list.push(`${origin}/api`);
+    }
+  }
+
+  // 2. PRIMARY ENV: When EXPO_PUBLIC_API_URL or API_URL is set, prioritize it
   if (envBase) {
     list.push(envBase);
   }
 
-  // 2. WEB / PORTAL SAME-ORIGIN: If running on web and no ENV, prioritize relative /api
+  // 3. CLOUD BACKEND FALLBACKS (Render & Vercel edge proxy)
+  list.push("https://inventory-app-backend-5iet.onrender.com/api");
+  list.push("https://inventoryappfrontend.vercel.app/api");
+
+  // 4. WEB LOCALHOST / SAME-ORIGIN FALLBACKS
   if (Platform.OS === "web" && typeof window !== "undefined") {
     const { protocol, hostname, origin } = window.location;
-    if (!envBase) {
-      list.push("/api");
-      if (origin) {
-        list.push(`${origin}/api`);
-      }
-    }
+    list.push("/api");
+    if (origin) list.push(`${origin}/api`);
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       list.push("http://localhost:8080/api");
     } else if (
@@ -55,17 +66,9 @@ function getCandidateBases(): string[] {
     } else if (hostname.includes("-8081.")) {
       list.push(`${protocol}//${hostname.replace("-8081.", "-8080.")}/api`);
     }
-
-    // Also include same-origin as fallback if custom env was set
-    if (envBase) {
-      list.push("/api");
-      if (origin) {
-        list.push(`${origin}/api`);
-      }
-    }
   }
 
-  // 3. FALLBACKS FOR LOCAL DEV & EMULATORS
+  // 5. LOCAL DEV FALLBACK FOR EMULATORS & NATIVE
   list.push("http://localhost:8080/api");
 
   const filtered = list.filter(Boolean);
@@ -114,23 +117,26 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         res.status === 503 ||
         res.status === 504
       ) {
+        if (activeBase === base) activeBase = null;
         lastError = new Error(`Server at ${base} returned HTTP ${res.status}`);
         continue;
       }
       const ct = res.headers.get("content-type") || "";
       // If Metro (without proxy reload) or DevTunnels returned an HTML page instead of API response, try next base
       if (ct.includes("text/html")) {
+        if (activeBase === base) activeBase = null;
         continue;
       }
       activeBase = base;
       return res;
     } catch (err) {
+      if (activeBase === base) activeBase = null;
       lastError = err;
     }
   }
   throw lastError instanceof Error
     ? lastError
-    : new Error("Cannot connect to backend server (port 8080)");
+    : new Error("Cannot connect to backend server");
 }
 
 const KEY = "retailflow_session_v1";

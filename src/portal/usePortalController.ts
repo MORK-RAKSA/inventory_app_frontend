@@ -406,11 +406,19 @@ export function usePortalController() {
     setFormWholesaleCcy('KHR');
     setFormWholesalePrice('');
     setFormImageUrl(null);
-    const defUom = uomConfigs[0] || DEFAULT_UOM_CONFIGS[0];
-    setSelectedUomConfigId(defUom?.id || 'uom-case-24');
-    setFormBaseUnit(defUom?.baseUnit || 'Can');
-    setFormCaseUnitName(defUom?.caseUnitName || 'Case');
-    setFormCaseQty(String(defUom?.caseQty || 24));
+    const defBase = (configuredBaseUnits && configuredBaseUnits[0]) || 'Can';
+    const matchingUom =
+      uomConfigs.find(
+        (u) => u.baseUnit && u.baseUnit.toLowerCase() === defBase.toLowerCase()
+      ) ||
+      uomConfigs[0] ||
+      DEFAULT_UOM_CONFIGS[0];
+
+    setSelectedUomConfigId(matchingUom?.id || 'uom-case-24');
+    setFormBaseUnit(defBase);
+    setFormCaseUnitName(matchingUom?.caseUnitName || 'Case');
+    setFormCaseQty(String(matchingUom?.caseQty || 24));
+    setFormCategory((configuredCategories && configuredCategories[0]) || 'General');
     setFormWholesaleMinQty('1');
     setShowProductModal(false);
     setTab('product-form');
@@ -1035,24 +1043,34 @@ export function usePortalController() {
 
   // Computed metrics
   const categories = useMemo(() => {
-    const set = new Set<string>(configuredCategories);
+    if (configuredCategories && configuredCategories.length > 0) {
+      const set = new Set<string>(configuredCategories);
+      if (editingProduct?.category?.trim()) set.add(editingProduct.category.trim());
+      return ['All', ...Array.from(set)];
+    }
+    const set = new Set<string>();
     products.forEach((p) => {
       if (p.category?.trim()) set.add(p.category.trim());
     });
     return ['All', ...Array.from(set)];
-  }, [configuredCategories, products]);
+  }, [configuredCategories, editingProduct, products]);
 
   const availableBaseUnits = useMemo(() => {
-    const set = new Set<string>(configuredBaseUnits);
+    if (configuredBaseUnits && configuredBaseUnits.length > 0) {
+      if (editingProduct?.baseUnit?.trim() && !configuredBaseUnits.includes(editingProduct.baseUnit.trim())) {
+        return [...configuredBaseUnits, editingProduct.baseUnit.trim()];
+      }
+      return configuredBaseUnits;
+    }
+    const set = new Set<string>();
     uomConfigs.forEach((u) => {
       if (u.baseUnit?.trim()) set.add(u.baseUnit.trim());
     });
     products.forEach((p) => {
       if (p.baseUnit?.trim()) set.add(p.baseUnit.trim());
     });
-    if (formBaseUnit?.trim()) set.add(formBaseUnit.trim());
-    return Array.from(set);
-  }, [configuredBaseUnits, uomConfigs, products, formBaseUnit]);
+    return set.size > 0 ? Array.from(set) : ['Can', 'Bottle', 'Piece', 'Box'];
+  }, [configuredBaseUnits, editingProduct, uomConfigs, products]);
 
   const activeSales = useMemo(() => sales.filter((s) => s.status !== 'ARCHIVED'), [sales]);
 

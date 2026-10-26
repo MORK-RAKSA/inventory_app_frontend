@@ -42,16 +42,10 @@ export function UomModal({ portal }: { portal: PortalController }) {
 
   const baseUnitOptions = Array.from(
     new Set([
-      ...(availableBaseUnits || []),
-      'Piece',
-      'Can',
-      'Bottle',
-      'Box',
-      'Pack',
-      'Bag',
-      'Cup',
-      'Pair',
-      'Set',
+      ...(availableBaseUnits && availableBaseUnits.length > 0
+        ? availableBaseUnits
+        : ['Piece', 'Can', 'Bottle', 'Box', 'Pack']),
+      editingUomConfig?.baseUnit,
       uomFormBaseUnit,
     ].filter(Boolean))
   );

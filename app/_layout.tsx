@@ -224,7 +224,12 @@ export default function Root() {
       setPassword('');
       setAuthenticated(true);
     } catch (e) {
-      setError(String(e instanceof Error ? e.message : e));
+      const raw = String(e instanceof Error ? e.message : e);
+      if (raw.toLowerCase().includes('network request failed')) {
+        setError('Cannot connect to server. If on cloud, the server may be waking up (please retry). If running locally, make sure your backend is running.');
+      } else {
+        setError(raw);
+      }
       triggerShake();
     } finally {
       setBusy(false);
