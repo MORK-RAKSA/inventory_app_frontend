@@ -50,7 +50,7 @@ import { useLanguage } from '../i18n';
 import { useSounds } from '../hooks/useSounds';
 import { useLiveData } from '../hooks/useLiveData';
 import { canonicalBarcode, sameBarcode } from '../barcode';
-import { createScanGate, isDuplicateScan, rememberScan } from '../scanGate';
+import { createScanGate, holdScanGate, isDuplicateScan, rememberScan } from '../scanGate';
 import { validateBarcodeRead } from '../barcodeScannerValidation';
 import { decodeBarcodeFromImageUri } from '../webBarcodeScanner';
 import { ProductImage } from './ProductImage';
@@ -278,9 +278,12 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       if (!code) return;
 
       const now = Date.now();
-      // The gate is the real duplicate guard: while this barcode stays in frame it is already counted.
-      if (!options?.skipLatch && isDuplicateScan(latch.current, code, now)) return;
-      if (lastScanned.current.code === code && now - lastScanned.current.at < 120) return;
+      // Controlled delay: 1500ms delay for the SAME barcode to avoid runaway duplicate scans; 400ms for DIFFERENT barcode.
+      const minGap = lastScanned.current.code === code ? 1500 : 400;
+      // Combined gate: prevent duplicate if either the scan-latch or the post-success cooldown is active.
+      const onCooldown = isDuplicateScan(latch.current, code, now, 1500)
+        || holdScanGate(latch.current, code, now, 1500)
+      if (!options?.skipLatch && onCooldown) return;
       rememberScan(latch.current, code, now);
       lastScanned.current = { code, at: now };
 
@@ -382,7 +385,8 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       pendingRead.current = { code, n: 1, at: now };
     }
 
-    const needed = validation.checksumVerified ? 1 : 2;
+    // Require 2 matching frames to avoid jitter/burst reads from the camera
+    const needed = 2;
     if (pendingRead.current.n >= needed) {
       pendingRead.current = { code: '', n: 0, at: 0 };
       void handleCode(code);
@@ -442,10 +446,12 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       );
       return;
     }
-    // No `cameraReady` gate: `onCameraReady` does not fire on every device/host, which used to make
-    // the torch button do nothing at all. Toggling is safe before the first frame too.
     setCameraError('');
     setTorch((t) => !t);
+    // Force camera to re-evaluate torch after state change — some devices need a brief frame.
+    if (cameraReady) {
+      void setTorch((t) => !t);
+    }
   }
 
   function openProductForm(params: { id?: string; barcode?: string }) {

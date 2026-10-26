@@ -24,13 +24,16 @@ export function createScanGate(): ScanGate {
 /**
  * True when this frame must be ignored because the same barcode was already counted and is still
  * visible. Refreshes the gate while the barcode stays in frame so it cannot re-open mid-scan.
+ * Returns false (opens the gate) only after `holdMs` has elapsed since the code was last seen.
  */
-export function isDuplicateScan(gate: ScanGate, code: string, now: number, holdMs = 600): boolean {
+export function isDuplicateScan(gate: ScanGate, code: string, now: number, holdMs = 1500): boolean {
   if (gate.code === code) {
     if (now - gate.seenAt < holdMs) {
+      // Keep the gate closed while the same barcode is in view.
       gate.seenAt = now;
       return true;
     }
+    // Gate has cooled off — open it so the same barcode can be scanned again.
     gate.code = '';
   }
   return false;
@@ -40,4 +43,18 @@ export function isDuplicateScan(gate: ScanGate, code: string, now: number, holdM
 export function rememberScan(gate: ScanGate, code: string, now: number): void {
   gate.code = code;
   gate.seenAt = now;
+}
+
+/** Ensures a barcode cannot be re-counted within `holdMs` after it was successfully processed.
+ * This prevents the same item from being added to stock twice after a successful scan.
+ */
+export function holdScanGate(gate: ScanGate, code: string, now: number, holdMs = 1500): boolean {
+  if (gate.code === code) {
+    if (now - gate.seenAt < holdMs) {
+      return true; // still on cooldown
+    }
+    // cooldown finished — reset so a fresh scan is allowed
+    gate.code = '';
+  }
+  return false;
 }

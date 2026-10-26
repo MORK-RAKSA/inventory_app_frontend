@@ -131,6 +131,7 @@ export function CameraScanner({
   const [failReason, setFailReason] = useState('');
   const last = useRef({ code: '', at: 0 });
   const pendingRead = useRef({ code: '', n: 0, at: 0 });
+  const postSuccessCooldownRef = useRef<{ code: string; until: number }>({ code: '', until: 0 });
   /** Closed while the same barcode stays in the viewfinder so one item is only counted once. */
   const latch = useRef(createScanGate());
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -280,8 +281,13 @@ export function CameraScanner({
     const cleanCode = canonicalBarcode(validated.code);
     const now = Date.now();
 
-    // Still looking at the barcode we already accepted → ignore every further frame.
-    if (isDuplicateScan(latch.current, cleanCode, now)) return;
+    // 1. Post-success cooldown delay: avoid scanning the same stock repeatedly in rapid succession
+    if (cleanCode === postSuccessCooldownRef.current.code && now < postSuccessCooldownRef.current.until) {
+      return;
+    }
+
+    // 2. Still looking at the barcode we already accepted → ignore every further frame.
+    if (isDuplicateScan(latch.current, cleanCode, now, 1500)) return;
 
     const p = pendingRead.current;
     if (p.code === cleanCode && now - p.at < 900) {
@@ -290,8 +296,9 @@ export function CameraScanner({
     } else {
       pendingRead.current = { code: cleanCode, n: 1, at: now };
     }
-    // Verified check digit = instant success; unverified formats still need a second frame.
-    const needed = validated.checksumVerified ? 1 : 2;
+
+    // Require 2 matching frames to ensure rock-solid stability and prevent sudden erratic triggers
+    const needed = 2;
     if (pendingRead.current.n >= needed) {
       pendingRead.current = { code: '', n: 0, at: 0 };
       rememberScan(latch.current, cleanCode, now);
@@ -303,11 +310,13 @@ export function CameraScanner({
     const value = canonicalBarcode(raw);
     if (!value) return;
     const now = Date.now();
-    // Safety net for a duplicated event inside one frame batch (the latch handles the rest).
-    if (last.current.code === value && now - last.current.at < 120) return;
+
+    // Controlled delay: 1500ms delay for the SAME barcode to avoid runaway stock increases;
+    // 400ms for a DIFFERENT barcode so cashiers can scan distinct items without delay.
+    const minGap = last.current.code === value ? 1500 : 400;
+    if (now - last.current.at < minGap) return;
 
     last.current = { code: value, at: now };
-    // Also latch direct entry points (Snap / Image) so the camera loop cannot count the same item.
     rememberScan(latch.current, value, now);
     const qty = getActiveQty();
 
@@ -325,6 +334,9 @@ export function CameraScanner({
         triggerVisualFeedback('fail', msg);
         return;
       }
+
+      // Success: enforce delay for this barcode so stock doesn't increase too fast
+      postSuccessCooldownRef.current = { code: value, until: Date.now() + 1500 };
 
       const customLabel =
         typeof result === 'object' && result !== null && result.label

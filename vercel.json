@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://inventoryappbackend.vercel.app/api/$1"
+    },
+    {
       "source": "/((?!_expo/|assets/|favicon.ico).*)",
       "destination": "/index.html"
     }

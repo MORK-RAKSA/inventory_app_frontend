@@ -66,6 +66,7 @@ export default function Inventory() {
   const [scanTarget, setScanTarget] = useState<'search' | 'barcode' | null>(null);
   const reopenModalAfterScan = useRef(false);
   const autoFilledNameRef = useRef('');
+  const lastInventoryScanRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
 
   const [expiry, setExpiry] = useState('');
   const [filter, setFilter] = useState('All');
@@ -129,6 +130,20 @@ export default function Inventory() {
   async function handleBarcodeScan(code: string, qty = 1): Promise<ScanResult> {
     const clean = code.trim();
     if (!clean) return false;
+
+    const now = Date.now();
+    // Prevent accidental runaway duplicate scanning of the same item increasing stock multiple times
+    if (
+      scanTarget === 'barcode' &&
+      lastInventoryScanRef.current.code === clean &&
+      now - lastInventoryScanRef.current.at < 1500
+    ) {
+      return {
+        ok: true,
+        label: tr('Scan cooldown active', 'កំពុងពន្យារពេលស្កេនដដែល'),
+      };
+    }
+    lastInventoryScanRef.current = { code: clean, at: now };
 
     if (scanTarget === 'search') {
       const found = products.find(

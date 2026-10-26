@@ -63,13 +63,16 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   for (const base of candidates) {
     try {
       const res = await fetch(base + path, init);
-      // Skip server bad gateways (502, 503, 504) or failed Vercel serverless function 404s
-      if (res.status === 502 || res.status === 503 || res.status === 504) {
-        lastError = new Error(`Server returned HTTP ${res.status}`);
-        continue;
-      }
-      if (res.status === 404 && base === VERCEL_BACKEND_API) {
-        lastError = new Error(`Vercel backend returned 404`);
+      // Skip server bad gateways (502, 503, 504), method not allowed (405 from static edge rewrites),
+      // or 404 from non-matching static routes so we fall back to working backend URLs
+      if (
+        res.status === 405 ||
+        res.status === 502 ||
+        res.status === 503 ||
+        res.status === 504 ||
+        (res.status === 404 && base !== candidates[candidates.length - 1])
+      ) {
+        lastError = new Error(`Server at ${base} returned HTTP ${res.status}`);
         continue;
       }
       const ct = res.headers.get("content-type") || "";
@@ -117,19 +120,43 @@ async function store(session: Tokens | null) {
   else await remove();
 }
 async function request(path: string, body: object) {
-  const r = await apiFetch(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok)
+  let r: Response;
+  try {
+    r = await apiFetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const altPath = path.startsWith("/auth/") ? path.replace("/auth/", "/") : path;
+    if (altPath !== path) {
+      r = await apiFetch(altPath, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  if (!r.ok) {
+    let errMsg = "";
+    try {
+      const errJson = await r.json();
+      errMsg = errJson.error || errJson.message || "";
+    } catch (_) {}
+
     throw new Error(
       r.status === 401
-        ? "Incorrect username or password"
-        : `Authentication failed (${r.status})`,
+        ? (errMsg || "Incorrect username or password")
+        : (errMsg || `Authentication failed (${r.status})`),
     );
+  }
   return r.json() as Promise<Tokens>;
 }
 export async function login(username: string, password: string) {
