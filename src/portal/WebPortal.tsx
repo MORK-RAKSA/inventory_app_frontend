@@ -1,4 +1,5 @@
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Platform, ScrollView, Text, View } from 'react-native';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { DashboardTab } from './dashboard/DashboardTab';
 import { BatchIntakePage } from './inventory/BatchIntakePage';
@@ -21,6 +22,30 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
   void onSwitchToMobile;
   const portal = usePortalController();
   const { activeReceipt, isCompact, loading, setActiveReceipt, tab } = portal;
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const styleId = 'portal-no-focus-outline';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
+          *:focus,
+          *:focus-visible,
+          input:focus,
+          textarea:focus,
+          select:focus,
+          button:focus,
+          [tabindex]:focus {
+            outline: none !important;
+            box-shadow: none !important;
+            -webkit-focus-ring-color: transparent !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: P.canvas }}>

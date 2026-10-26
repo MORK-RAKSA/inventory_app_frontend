@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Text, View, TextInput, Platform, Alert, ScrollView } from 'react-native';
+import { Modal, Text, View, TextInput, Platform, Alert, ScrollView, Vibration, StyleSheet } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { CameraView, useCameraPermissions, BarcodeType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -41,6 +41,7 @@ import {
 import { canonicalBarcode } from '../barcode';
 import { validateBarcodeRead } from '../barcodeScannerValidation';
 import { createScanGate, isDuplicateScan, rememberScan } from '../scanGate';
+import { useSounds } from '../hooks/useSounds';
 
 const ALL_BARCODE_TYPES: BarcodeType[] = [
   'ean13',
@@ -78,6 +79,32 @@ export interface CheckoutScannerItem {
   stock: number;
   unitPriceKhr: string;
   lineTotalKhr: string;
+}
+
+function isInsideScannerFrame(
+  bounds: { origin: { x: number; y: number }; size: { width: number; height: number } } | undefined,
+  layout: { width: number; height: number },
+  isCheckout: boolean
+): boolean {
+  if (!bounds || !layout.width || !layout.height) return true;
+  const topFraction = isCheckout ? 0.14 : 0.24;
+  const frameH = isCheckout ? 142 : 165;
+  const frameTop = layout.height * topFraction;
+  const frameLeft = layout.width * 0.07;
+  const frameWidth = layout.width * 0.86;
+
+  const centerX = bounds.origin.x + bounds.size.width / 2;
+  const centerY = bounds.origin.y + bounds.size.height / 2;
+
+  const marginX = frameWidth * 0.15;
+  const marginY = frameH * 0.20;
+
+  return (
+    centerX >= frameLeft - marginX &&
+    centerX <= frameLeft + frameWidth + marginX &&
+    centerY >= frameTop - marginY &&
+    centerY <= frameTop + frameH + marginY
+  );
 }
 
 export function CameraScanner({
@@ -131,11 +158,12 @@ export function CameraScanner({
   const [failReason, setFailReason] = useState('');
   const last = useRef({ code: '', at: 0 });
   const pendingRead = useRef({ code: '', n: 0, at: 0 });
-  const postSuccessCooldownRef = useRef<{ code: string; until: number }>({ code: '', until: 0 });
   /** Closed while the same barcode stays in the viewfinder so one item is only counted once. */
   const latch = useRef(createScanGate());
+  const cameraLayout = useRef({ width: 0, height: 0 });
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { tr } = useLanguage();
+  const { playScan, playFail } = useSounds();
 
   // Distinct color palettes for Search Finder vs POS Checkout vs Stock Add Mode
   const theme = isSearch
@@ -222,6 +250,14 @@ export function CameraScanner({
     ),
   }));
 
+  const screenFlashStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      flash.value,
+      [-1, 0, 1],
+      ['rgba(239, 68, 68, 0.45)', 'rgba(0, 0, 0, 0)', 'rgba(34, 197, 94, 0.45)'],
+    ),
+  }));
+
   useEffect(() => {
     if (visible && !permission?.granted) {
       setCameraError('');
@@ -242,25 +278,29 @@ export function CameraScanner({
     if (bannerTimer.current) clearTimeout(bannerTimer.current);
     setBannerState(kind);
     if (kind === 'fail') {
+      playFail();
+      if (Platform.OS !== 'web') Vibration.vibrate([0, 50, 40, 50]);
       setFailReason(messageText);
       flash.value = withSequence(
-        withTiming(-1, { duration: 100 }),
-        withTiming(-1, { duration: 650 }),
-        withTiming(0, { duration: 320 }),
+        withTiming(-1, { duration: 90 }),
+        withTiming(-1, { duration: 550 }),
+        withTiming(0, { duration: 240 }),
       );
       bannerTimer.current = setTimeout(() => {
         setBannerState('idle');
-      }, 1050);
+      }, 880);
     } else {
+      playScan();
+      if (Platform.OS !== 'web') Vibration.vibrate(45);
       setLastLabel(messageText);
       flash.value = withSequence(
-        withTiming(1, { duration: 110 }),
-        withTiming(1, { duration: 440 }),
-        withTiming(0, { duration: 280 }),
+        withTiming(1, { duration: 90 }),
+        withTiming(1, { duration: 420 }),
+        withTiming(0, { duration: 220 }),
       );
       bannerTimer.current = setTimeout(() => {
         setBannerState('idle');
-      }, 1000);
+      }, 730);
     }
   }
 
@@ -269,7 +309,8 @@ export function CameraScanner({
    * - Rejects EAN/UPC reads whose check digit is wrong (misreads produce a *different* product ID).
    * - GTIN symbologies (EAN-8/13, UPC-A, ITF-14) are accepted on the FIRST frame because their check
    *   digit already proves the read is intact. Other symbologies need two matching frames.
-   * - The latch stops the same physical barcode from being counted again while it stays in frame.
+   * - Strict Cashier Gate: while the same barcode is held still in front of camera, it triggers ONCE
+   *   and stays locked indefinitely. It unlocks ONLY after barcode is moved out of view for 800ms.
    */
   function cameraRead(raw: string, type?: string) {
     const value = raw.trim();
@@ -281,40 +322,20 @@ export function CameraScanner({
     const cleanCode = canonicalBarcode(validated.code);
     const now = Date.now();
 
-    // 1. Post-success cooldown delay: avoid scanning the same stock repeatedly in rapid succession
-    if (cleanCode === postSuccessCooldownRef.current.code && now < postSuccessCooldownRef.current.until) {
-      return;
-    }
+    // Check duplicate gate: if user is holding the same barcode in front of camera,
+    // this updates seenAt and returns true, so duplicate scans are 100% prevented
+    // until barcode is removed from view for at least 800ms.
+    if (isDuplicateScan(latch.current, cleanCode, now, 800)) return;
 
-    // 2. Still looking at the barcode we already accepted → ignore every further frame.
-    if (isDuplicateScan(latch.current, cleanCode, now, 1500)) return;
-
-    const p = pendingRead.current;
-    if (p.code === cleanCode && now - p.at < 900) {
-      p.n += 1;
-      p.at = now;
-    } else {
-      pendingRead.current = { code: cleanCode, n: 1, at: now };
-    }
-
-    // GTINs and retail barcodes trigger immediately on 1 frame; latch and post-success cooldown prevent duplicates
-    const needed = 1;
-    if (pendingRead.current.n >= needed) {
-      pendingRead.current = { code: '', n: 0, at: 0 };
-      rememberScan(latch.current, cleanCode, now);
-      void scanned(cleanCode);
-    }
+    // First detection: lock gate immediately so upcoming frames of this barcode are ignored
+    rememberScan(latch.current, cleanCode, now);
+    void scanned(cleanCode);
   }
 
   async function scanned(raw: string) {
     const value = canonicalBarcode(raw);
     if (!value) return;
     const now = Date.now();
-
-    // Controlled delay: 1500ms delay for the SAME barcode to avoid runaway stock increases;
-    // 400ms for a DIFFERENT barcode so cashiers can scan distinct items without delay.
-    const minGap = last.current.code === value ? 1500 : 400;
-    if (now - last.current.at < minGap) return;
 
     last.current = { code: value, at: now };
     rememberScan(latch.current, value, now);
@@ -334,9 +355,6 @@ export function CameraScanner({
         triggerVisualFeedback('fail', msg);
         return;
       }
-
-      // Success: enforce delay for this barcode so stock doesn't increase too fast
-      postSuccessCooldownRef.current = { code: value, until: Date.now() + 1500 };
 
       const customLabel =
         typeof result === 'object' && result !== null && result.label
@@ -587,6 +605,10 @@ export function CameraScanner({
         {/* Camera viewport — the scanner overlay visibly indicates when the camera feed is paused */}
         {permission?.granted ? (
           <View
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              cameraLayout.current = { width, height };
+            }}
             style={{
               flex: isCheckout ? 0 : 1,
               height: isCheckout ? 235 : undefined,
@@ -604,7 +626,10 @@ export function CameraScanner({
               zoom={zoomValue}
               enableTorch={Platform.OS !== 'web' && torch}
               barcodeScannerSettings={{ barcodeTypes: ALL_BARCODE_TYPES }}
-              onBarcodeScanned={(e) => {
+              onBarcodeScanned={(e: any) => {
+                if (!isInsideScannerFrame(e.bounds, cameraLayout.current, isCheckout)) {
+                  return;
+                }
                 setCameraReady(true);
                 cameraRead(e.data, e.type);
               }}
@@ -616,6 +641,12 @@ export function CameraScanner({
                 setCameraReady(false);
                 setCameraError(e.message || 'Camera unavailable');
               }}
+            />
+
+            {/* Screen Flash Overlay on Success / Fail */}
+            <Animated.View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, screenFlashStyle]}
             />
             <Animated.View
               pointerEvents="none"

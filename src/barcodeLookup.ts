@@ -188,7 +188,7 @@ export async function lookupBarcodeOnline(
 ): Promise<BarcodeProductInfo | null> {
   const clean = canonicalBarcode(barcode);
   if (!clean) return null;
-  const allowFallback = options?.allowFallback ?? true;
+  const allowFallback = options?.allowFallback ?? false;
 
   // 1. Check local remembered dictionary first
   const dict = await getBarcodeDict();

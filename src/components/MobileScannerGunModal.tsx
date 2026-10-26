@@ -164,6 +164,30 @@ const OUTCOME_STYLE: Record<OutcomeStatus, { color: string; bg: string; icon: ty
  * Full screen modal host. The body is only mounted while open so the camera, the product catalog
  * and the keep-awake lock are only active during a scanning session.
  */
+function isInsideGunFrame(
+  bounds: { origin: { x: number; y: number }; size: { width: number; height: number } } | undefined,
+  layout: { width: number; height: number }
+): boolean {
+  if (!bounds || !layout.width || !layout.height) return true;
+  const frameTop = 34;
+  const frameH = 164;
+  const frameLeft = 26;
+  const frameWidth = layout.width - 52;
+
+  const centerX = bounds.origin.x + bounds.size.width / 2;
+  const centerY = bounds.origin.y + bounds.size.height / 2;
+
+  const marginX = frameWidth * 0.15;
+  const marginY = frameH * 0.20;
+
+  return (
+    centerX >= frameLeft - marginX &&
+    centerX <= frameLeft + frameWidth + marginX &&
+    centerY >= frameTop - marginY &&
+    centerY <= frameTop + frameH + marginY
+  );
+}
+
 export function MobileScannerGunModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal
@@ -199,6 +223,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
   const [pickNotice, setPickNotice] = useState('');
 
   const pendingRead = useRef({ code: '', n: 0, at: 0 });
+  const gunCameraLayout = useRef({ width: 0, height: 0 });
   const lastScanned = useRef({ code: '', at: 0 });
   /** Closed while the same barcode is still in the viewfinder, so one item is beamed exactly once. */
   const latch = useRef(createScanGate());
@@ -283,12 +308,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       if (!code) return;
 
       const now = Date.now();
-      // Controlled delay: 1500ms delay for the SAME barcode to avoid runaway duplicate scans; 400ms for DIFFERENT barcode.
-      const minGap = lastScanned.current.code === code ? 1500 : 400;
-      // Combined gate: prevent duplicate if either the scan-latch or the post-success cooldown is active.
-      const onCooldown = isDuplicateScan(latch.current, code, now, 1500)
-        || holdScanGate(latch.current, code, now, 1500)
-      if (!options?.skipLatch && onCooldown) return;
+      if (!options?.skipLatch && isDuplicateScan(latch.current, code, now, 800)) return;
       rememberScan(latch.current, code, now);
       lastScanned.current = { code, at: now };
 
@@ -373,7 +393,8 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
    * A GTIN whose check digit verified is trusted on the first frame (instant feedback). Other
    * symbologies still require two matching frames before they are beamed.
    */
-  function handleBarcodeScanned(result: { data?: string; type?: string }) {
+  function handleBarcodeScanned(result: { data?: string; type?: string; bounds?: any }) {
+    if (!isInsideGunFrame(result?.bounds, gunCameraLayout.current)) return;
     const raw = (result?.data || '').trim();
     if (!raw) return;
     setCameraReady(true);
@@ -382,20 +403,10 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
 
     const code = canonicalBarcode(validation.code);
     const now = Date.now();
-    const p = pendingRead.current;
-    if (p.code === code && now - p.at < 1200) {
-      p.n += 1;
-      p.at = now;
-    } else {
-      pendingRead.current = { code, n: 1, at: now };
-    }
+    if (isDuplicateScan(latch.current, code, now, 800)) return;
 
-    // Trigger immediately on 1 frame; latch and gate cooldown avoid duplicates
-    const needed = 1;
-    if (pendingRead.current.n >= needed) {
-      pendingRead.current = { code: '', n: 0, at: 0 };
-      void handleCode(code);
-    }
+    rememberScan(latch.current, code, now);
+    void handleCode(code);
   }
 
   function submitManual() {
@@ -550,7 +561,13 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
 
       {/* ── Viewfinder ─────────────────────────────────────────── */}
       <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-        <View style={{ height: 232, borderRadius: 24, overflow: 'hidden', backgroundColor: '#000' }}>
+        <View
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            gunCameraLayout.current = { width, height };
+          }}
+          style={{ height: 232, borderRadius: 24, overflow: 'hidden', backgroundColor: '#000' }}
+        >
           {permission?.granted ? (
             <CameraView
               active

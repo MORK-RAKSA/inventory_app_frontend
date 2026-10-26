@@ -58,6 +58,11 @@ export interface Sale {
   paidCurrency?: string;
   priceTier?: 'RETAIL' | 'WHOLESALE' | string;
   status?: string;
+  tenderAmount?: number;
+  tenderCurrency?: string;
+  changeText?: string;
+  changeSplit?: string;
+  changeAllKhr?: string;
   items: {
     id: string;
     productId: string;

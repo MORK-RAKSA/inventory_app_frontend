@@ -1,13 +1,12 @@
 /**
  * Duplicate-scan gate.
  *
- * A barcode scanner re-reads the same barcode on every camera frame (~5–10 fps), so a naive
- * debounce still adds the item again every few hundred milliseconds while the product stays in
- * front of the lens — the "redundant stock" bug. The gate stays closed for as long as the same
- * code keeps arriving, and re-arms only after the barcode has been out of frame for `holdMs`.
+ * A barcode scanner re-reads the same barcode on every camera frame (~5–10 fps).
+ * If the user holds the same barcode in front of the lens without moving it,
+ * the scanner must scan exactly ONCE and stay locked indefinitely.
  *
- * That is exactly how a cashier scans two identical items: remove the item (frames stop, gate
- * re-arms) and present it again.
+ * It will ONLY unlock after the user physically moves the item away (frames stop
+ * seeing the code for at least `holdMs`), and presents it again.
  */
 
 export interface ScanGate {
@@ -22,39 +21,40 @@ export function createScanGate(): ScanGate {
 }
 
 /**
- * True when this frame must be ignored because the same barcode was already counted and is still
- * visible. Refreshes the gate while the barcode stays in frame so it cannot re-open mid-scan.
- * Returns false (opens the gate) only after `holdMs` has elapsed since the code was last seen.
+ * Checks whether this frame should be ignored because the same barcode was already
+ * accepted and is still actively visible in front of the lens.
+ *
+ * While the barcode remains in view, it continuously refreshes `gate.seenAt = now`,
+ * keeping the gate LOCKED indefinitely (no repeat scan while held still).
+ *
+ * Unlocks ONLY after the barcode has been absent for at least `holdMs` (default 800ms).
  */
-export function isDuplicateScan(gate: ScanGate, code: string, now: number, holdMs = 1500): boolean {
-  if (gate.code === code) {
+export function isDuplicateScan(gate: ScanGate, code: string, now: number, holdMs = 800): boolean {
+  if (gate.code && gate.code === code) {
     if (now - gate.seenAt < holdMs) {
-      // Keep the gate closed while the same barcode is in view.
+      // Still in front of the camera: keep gate locked and update timestamp
       gate.seenAt = now;
       return true;
     }
-    // Gate has cooled off — open it so the same barcode can be scanned again.
+    // Barcode was moved out of frame for >= holdMs: reset gate to open
     gate.code = '';
   }
   return false;
 }
 
-/** Marks `code` as counted at `now`, closing the gate for repeated frames of the same barcode. */
+/** Marks `code` as counted at `now`, locking the gate for this barcode until it leaves the frame. */
 export function rememberScan(gate: ScanGate, code: string, now: number): void {
   gate.code = code;
   gate.seenAt = now;
 }
 
-/** Ensures a barcode cannot be re-counted within `holdMs` after it was successfully processed.
- * This prevents the same item from being added to stock twice after a successful scan.
- */
-export function holdScanGate(gate: ScanGate, code: string, now: number, holdMs = 1500): boolean {
-  if (gate.code === code) {
-    if (now - gate.seenAt < holdMs) {
-      return true; // still on cooldown
-    }
-    // cooldown finished — reset so a fresh scan is allowed
-    gate.code = '';
-  }
-  return false;
+/** Explicitly resets the scan gate (e.g. when scanner is closed or manual code is entered). */
+export function resetScanGate(gate: ScanGate): void {
+  gate.code = '';
+  gate.seenAt = 0;
+}
+
+/** Compatibility alias for isDuplicateScan. */
+export function holdScanGate(gate: ScanGate, code: string, now: number, holdMs = 800): boolean {
+  return isDuplicateScan(gate, code, now, holdMs);
 }

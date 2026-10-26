@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { Layers, Minus, Plus, Trash2 } from 'lucide-react-native';
 import { Product } from '../../api';
 import { khr, money } from '../../theme';
@@ -14,6 +14,7 @@ export function WholesaleCartTable({
   savingsUsd,
   savingsKhr,
   onAdd,
+  onSetQty,
   onRemove,
   tr,
 }: {
@@ -24,6 +25,7 @@ export function WholesaleCartTable({
   savingsUsd: number;
   savingsKhr: number;
   onAdd: (product: Product, delta: number, unitType: 'case' | 'loose') => void;
+  onSetQty?: (product: Product, targetQty: number, unitType: 'case' | 'loose') => void;
   onRemove: (productId: string) => void;
   tr: PortalController['tr'];
 }) {
@@ -178,17 +180,32 @@ export function WholesaleCartTable({
                 >
                   <Minus size={11} color="#4338CA" />
                 </Press>
-                <Text
+                <TextInput
+                  value={String(line.cases)}
+                  onChangeText={(txt) => {
+                    const cleaned = txt.replace(/\D/g, '');
+                    if (!cleaned) return;
+                    const val = parseInt(cleaned, 10);
+                    if (onSetQty) onSetQty(line.product, val, 'case');
+                    else onAdd(line.product, val - line.cases, 'case');
+                  }}
+                  keyboardType="number-pad"
                   style={{
-                    minWidth: 24,
+                    minWidth: 26,
+                    height: 22,
                     textAlign: 'center',
                     fontWeight: '800',
                     color: '#4338CA',
-                    fontSize: 12.5,
+                    fontSize: 12,
+                    backgroundColor: '#FFFFFF',
+                    borderWidth: 1,
+                    borderColor: '#C7D2FE',
+                    borderRadius: 4,
+                    paddingHorizontal: 2,
+                    paddingVertical: 0,
+                    ...(Platform.OS === 'web' ? { outline: 'none' as any } : {}),
                   }}
-                >
-                  {line.cases}
-                </Text>
+                />
                 <Press
                   onPress={() => onAdd(line.product, 1, 'case')}
                   style={{
@@ -231,17 +248,32 @@ export function WholesaleCartTable({
                 >
                   <Minus size={11} color="#0F766E" />
                 </Press>
-                <Text
+                <TextInput
+                  value={String(line.loose)}
+                  onChangeText={(txt) => {
+                    const cleaned = txt.replace(/\D/g, '');
+                    if (!cleaned) return;
+                    const val = parseInt(cleaned, 10);
+                    if (onSetQty) onSetQty(line.product, val, 'loose');
+                    else onAdd(line.product, val - line.loose, 'loose');
+                  }}
+                  keyboardType="number-pad"
                   style={{
-                    minWidth: 24,
+                    minWidth: 26,
+                    height: 22,
                     textAlign: 'center',
                     fontWeight: '800',
                     color: '#0F766E',
-                    fontSize: 12.5,
+                    fontSize: 12,
+                    backgroundColor: '#FFFFFF',
+                    borderWidth: 1,
+                    borderColor: '#99F6E4',
+                    borderRadius: 4,
+                    paddingHorizontal: 2,
+                    paddingVertical: 0,
+                    ...(Platform.OS === 'web' ? { outline: 'none' as any } : {}),
                   }}
-                >
-                  {line.loose}
-                </Text>
+                />
                 <Press
                   onPress={() => onAdd(line.product, 1, 'loose')}
                   style={{

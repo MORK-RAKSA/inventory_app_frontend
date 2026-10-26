@@ -16,7 +16,8 @@ import { useLanguage } from '../i18n';
 import { useToast } from '../toast';
 import { useSounds } from '../hooks/useSounds';
 import { exportExcel } from '../exportExcel';
-import { lookupBarcodeOnline, buildSmartBarcodeName } from '../barcodeLookup';
+import { lookupBarcodeOnline } from '../barcodeLookup';
+import { CambodiaCashExchange } from '../exchangeRate';
 import { fetchUsdKhrRate, ExchangeRateQuote, loadLastRateQuote } from '../exchangeRate';
 import {
   getLiveActivityLog,
@@ -339,6 +340,44 @@ export function usePortalController() {
     });
   }
 
+  function setRetailQty(product: Product, targetQty: number) {
+    setCart((prev) => {
+      const clamped = Math.max(0, Math.min(product.stock, targetQty));
+      if (clamped === 0) {
+        const copy = { ...prev };
+        delete copy[product.id];
+        return copy;
+      }
+      return { ...prev, [product.id]: clamped };
+    });
+  }
+
+  function setWholesaleQty(product: Product, targetQty: number, unitType: 'case' | 'loose' = 'case') {
+    const cQty = product.caseQty || 24;
+    setWholesaleCart((prev) => {
+      const current = prev[product.id] || { cases: 0, loose: 0 };
+      const newCases = unitType === 'case' ? Math.max(0, targetQty) : current.cases;
+      const newLoose = unitType === 'loose' ? Math.max(0, targetQty) : current.loose;
+      const totalUnits = newCases * cQty + newLoose;
+      if (totalUnits > product.stock) {
+        toast.show(
+          tr(
+            `Cannot exceed stock of ${product.stock} units`,
+            `មិនអាចលើសស្តុក ${product.stock} ឯកតាទេ`
+          ),
+          { title: tr('Not enough stock', 'ស្តុកមិនគ្រប់'), tone: 'warning' }
+        );
+        return prev;
+      }
+      if (newCases === 0 && newLoose === 0) {
+        const copy = { ...prev };
+        delete copy[product.id];
+        return copy;
+      }
+      return { ...prev, [product.id]: { cases: newCases, loose: newLoose } };
+    });
+  }
+
   function addWholesaleItem(product: Product, delta = 1, unitType: 'case' | 'loose' = 'case') {
     const cQty = product.caseQty || 24;
     setWholesaleCart((prev) => {
@@ -422,12 +461,10 @@ export function usePortalController() {
     setShowProductModal(false);
     setTab('product-form');
     if (clean) {
-      const fallback = buildSmartBarcodeName(clean);
-      setFormName(fallback.name);
-      if (fallback.category) setFormCategory(fallback.category);
-      void lookupBarcodeOnline(clean, { allowFallback: true }).then((info) => {
+      setFormName('');
+      void lookupBarcodeOnline(clean, { allowFallback: false }).then((info) => {
         if (info?.name) {
-          setFormName((prev) => (prev && prev !== fallback.name ? prev : info.name));
+          setFormName((prev) => (prev ? prev : info.name));
           if (info.category) setFormCategory(info.category);
           if (info.imageUrl) setFormImageUrl((prev) => prev || info.imageUrl || null);
         }
@@ -1292,7 +1329,11 @@ export function usePortalController() {
     });
   }
 
-  async function completeCheckout() {
+  async function completeCheckout(tenderInfo?: {
+    tenderAmount: number;
+    tenderCurrency: 'USD' | 'KHR';
+    exchange: CambodiaCashExchange;
+  }) {
     const isWholesale = posMode === 'wholesale';
     const lines = isWholesale ? wholesaleCartLines : cartLines;
     if (!lines.length || checkingOut) return;
@@ -1322,7 +1363,7 @@ export function usePortalController() {
         method: 'POST',
         body: JSON.stringify({
           idempotencyKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          paidCurrency,
+          paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
           priceTier: isWholesale ? 'WHOLESALE' : 'RETAIL',
           items: itemsPayload,
         }),
@@ -1334,7 +1375,16 @@ export function usePortalController() {
       } else {
         setCart({});
       }
-      setActiveReceipt(sale);
+      const enhancedSale: Sale = {
+        ...sale,
+        paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
+        tenderAmount: tenderInfo?.tenderAmount,
+        tenderCurrency: tenderInfo?.tenderCurrency || paidCurrency,
+        changeText: tenderInfo?.exchange.formattedSplit,
+        changeSplit: tenderInfo?.exchange.formattedSplit,
+        changeAllKhr: tenderInfo?.exchange.formattedAllKhr,
+      };
+      setActiveReceipt(enhancedSale);
       toast.show(
         tr(
           `Payment complete: ${khr(sale.totalKhr)} (#${sale.id.slice(0, 6).toUpperCase()})`,
@@ -1767,6 +1817,8 @@ export function usePortalController() {
     loadBusyRef,
     loadAll,
     addToCart,
+    setRetailQty,
+    setWholesaleQty,
     addRetailItem,
     addWholesaleItem,
     openCreateProduct,

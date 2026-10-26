@@ -117,7 +117,7 @@ export default function Batch() {
       };
     } else {
       playScan();
-      const fallback = buildSmartBarcodeName(code);
+      const newKey = `new-${Date.now()}-${code}`;
       setPending((prev) =>
         prev.some((x) => x.barcode === code)
           ? prev.map((x) =>
@@ -126,22 +126,30 @@ export default function Batch() {
           : [
               ...prev,
               {
-                key: `new-${Date.now()}-${code}`,
-                name: fallback.name,
+                key: newKey,
+                name: "",
                 barcode: code,
-                category: fallback.category || "General",
+                category: "General",
                 quantity: qty,
                 priceUsd: Number((4100 / rate).toFixed(4)),
                 lowStockThreshold: 5,
               },
             ],
       );
-      const info = await lookupBarcodeOnline(code, { allowFallback: true });
+      void lookupBarcodeOnline(code, { allowFallback: false }).then((info) => {
+        if (info?.name) {
+          setPending((prev) =>
+            prev.map((x) =>
+              x.key === newKey ? { ...x, name: info.name, category: info.category || x.category } : x
+            )
+          );
+        }
+      });
+      const info = await lookupBarcodeOnline(code, { allowFallback: false });
       if (info && info.name) {
         setPending((prev) =>
           prev.map((x) =>
-            x.barcode === code &&
-            (!x.name.trim() || x.name === fallback.name)
+            x.barcode === code && !x.name.trim()
               ? {
                   ...x,
                   name: info.name,
@@ -153,7 +161,7 @@ export default function Batch() {
         setDraft((prev) =>
           prev &&
           prev.barcode === code &&
-          (!prev.name.trim() || prev.name === fallback.name)
+          !prev.name.trim()
             ? {
                 ...prev,
                 name: info.name,
@@ -164,7 +172,7 @@ export default function Batch() {
       }
       return {
         ok: true,
-        label: `${info?.name || fallback.name} (+${qty})`,
+        label: `${info?.name || code} (+${qty})`,
       };
     }
   }

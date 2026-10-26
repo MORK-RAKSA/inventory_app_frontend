@@ -164,6 +164,12 @@ function receiptHtml(s: Sale, cashier: string) {
     <div class="meta-row"><span class="bold">GRAND TOTAL · សរុបត្រូវបង់</span><span class="bold">PAID</span></div>
     <div class="grand-khr">${esc(khr(s.totalKhr))}</div>
     <div class="meta-row" style="margin-top:4px;"><span>TOTAL USD · សរុបជាដុល្លារ</span><span class="bold">${esc(money(s.totalUsd))}</span></div>
+    ${s.tenderAmount ? `
+    <div class="dash"></div>
+    <div class="meta-row"><span>CASH RECEIVED / ប្រាក់ទទួល:</span><span class="bold">${s.tenderCurrency === 'USD' ? `$${s.tenderAmount.toFixed(2)}` : esc(khr(s.tenderAmount))}</span></div>
+    ${s.changeSplit ? `<div class="meta-row"><span style="color:#047857;font-weight:700;">CHANGE / ប្រាក់អាប់ (SPLIT):</span><span class="bold" style="color:#047857;">${esc(s.changeSplit)}</span></div>` : ''}
+    ${s.changeAllKhr ? `<div class="meta-row"><span>CHANGE / ប្រាក់អាប់ (ALL KHR):</span><span class="bold">${esc(s.changeAllKhr)}</span></div>` : ''}
+    ` : ''}
   </div>
   <div class="dash"></div>
   <div class="center" style="margin-top:10px;">
@@ -1009,6 +1015,30 @@ export function ReceiptModal({
                     </Text>
                   </View>
                 </View>
+
+                {/* CASH TENDER & CHANGE BREAKDOWN (CAMBODIA DUAL-CURRENCY) */}
+                {sale.tenderAmount ? (
+                  <View style={{ marginTop: 10, padding: 12, backgroundColor: '#F0FDF4', borderRadius: 14, borderWidth: 1, borderColor: '#BBF7D0', gap: 6 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>{tr('CASH RECEIVED', 'ប្រាក់ទទួល')}:</Text>
+                      <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#166534' }}>
+                        {sale.tenderCurrency === 'USD' ? `$${sale.tenderAmount.toFixed(2)}` : khr(sale.tenderAmount)}
+                      </Text>
+                    </View>
+                    {sale.changeSplit ? (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#047857' }}>{tr('CHANGE (SPLIT)', 'ប្រាក់អាប់ (ដុល្លារ+រៀល)')}:</Text>
+                        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#047857' }}>{sale.changeSplit}</Text>
+                      </View>
+                    ) : null}
+                    {sale.changeAllKhr ? (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>{tr('CHANGE (ALL KHR)', 'ប្រាក់អាប់ (រៀលសុទ្ធ)')}:</Text>
+                        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#334155' }}>{sale.changeAllKhr}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 {/* BARCODE GRAPHIC & FOOTER */}
                 <View style={{ alignItems: 'center', marginTop: 14 }}>

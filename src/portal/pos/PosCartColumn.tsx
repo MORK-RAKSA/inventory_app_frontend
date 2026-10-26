@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { Check, Layers, ShoppingBag, Trash2 } from 'lucide-react-native';
 import { Press } from '../../motion';
@@ -6,10 +7,14 @@ import { P } from '../theme';
 import type { PortalController } from '../usePortalController';
 import { RetailCartTable } from './RetailCartTable';
 import { WholesaleCartTable } from './WholesaleCartTable';
+import { CashTenderModal } from '../../components/CashTenderModal';
 
 export function PosCartColumn({ portal }: { portal: PortalController }) {
+  const [showTenderModal, setShowTenderModal] = useState(false);
   const {
     addToCart,
+    setRetailQty,
+    setWholesaleQty,
     addWholesaleItem,
     cartLines,
     cartTotalKhr,
@@ -130,6 +135,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
             savingsUsd={wholesaleTotalSavingsUsd}
             savingsKhr={wholesaleTotalSavingsKhr}
             onAdd={(product, delta, unitType) => addWholesaleItem(product, delta, unitType)}
+            onSetQty={(product, targetQty, unitType) => setWholesaleQty(product, targetQty, unitType)}
             onRemove={removeWholesaleItem}
             tr={tr}
           />
@@ -138,6 +144,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
             lines={cartLines}
             rate={rate}
             onAdd={addToCart}
+            onSetQty={(product, targetQty) => setRetailQty(product, targetQty)}
             onRemove={removeRetailItem}
             tr={tr}
           />
@@ -267,7 +274,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
         {/* Primary Checkout Button */}
         <Press
           disabled={lineCount === 0 || checkingOut}
-          onPress={() => void completeCheckout()}
+          onPress={() => setShowTenderModal(true)}
           style={{
             height: 48,
             borderRadius: 12,
@@ -292,6 +299,19 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
           )}
         </Press>
       </View>
+
+      <CashTenderModal
+        visible={showTenderModal}
+        totalKhr={totalKhr}
+        totalUsd={totalUsd}
+        rate={rate}
+        busy={checkingOut}
+        onClose={() => setShowTenderModal(false)}
+        onConfirm={(tender) => {
+          setShowTenderModal(false);
+          void completeCheckout(tender);
+        }}
+      />
     </View>
   );
 }

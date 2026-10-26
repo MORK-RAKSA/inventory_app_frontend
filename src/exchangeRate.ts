@@ -152,3 +152,185 @@ export function describeRateSource(quote: ExchangeRateQuote | null): string {
   const date = quote.asOf ? ` · ${quote.asOf}` : '';
   return `${quote.sourceDetail} ${value} · ${quote.sourceHost}${date}`;
 }
+
+export interface CambodiaCashExchange {
+  tenderCurrency: 'USD' | 'KHR';
+  tenderAmount: number;
+  totalUsd: number;
+  totalKhr: number;
+  isExact: boolean;
+  isShort: boolean;
+  shortfallKhr: number;
+  shortfallUsd: number;
+  splitUsd: number;
+  splitKhr: number;
+  allKhr: number;
+  formattedSplit: string;
+  formattedAllKhr: string;
+}
+
+/**
+ * Cambodian Dual-Currency Cash & Change (Exchange) Calculator.
+ *
+ * In Cambodia, USD coins (cents) do NOT exist.
+ * When change includes cents, cashiers either:
+ *  - Option A (Split): Give full USD bills + small change in Khmer Riel rounded to 100 ៛
+ *  - Option B (All KHR): Convert all change into 100% Khmer Riel rounded to 100 ៛
+ */
+export function computeCambodiaCashExchange(
+  tenderAmount: number,
+  tenderCurrency: 'USD' | 'KHR',
+  totalUsd: number,
+  totalKhr: number,
+  rate: number
+): CambodiaCashExchange {
+  const safeRate = rate > 0 ? rate : 4000;
+  const safeTender = Math.max(0, tenderAmount || 0);
+
+  if (tenderCurrency === 'KHR') {
+    const dueKhr = Math.round(totalKhr);
+    const diffKhr = safeTender - dueKhr;
+
+    if (Math.abs(diffKhr) < 50) {
+      return {
+        tenderCurrency,
+        tenderAmount: safeTender,
+        totalUsd,
+        totalKhr: dueKhr,
+        isExact: true,
+        isShort: false,
+        shortfallKhr: 0,
+        shortfallUsd: 0,
+        splitUsd: 0,
+        splitKhr: 0,
+        allKhr: 0,
+        formattedSplit: '0 ៛',
+        formattedAllKhr: '0 ៛',
+      };
+    }
+
+    if (diffKhr < 0) {
+      const shortKhr = Math.abs(diffKhr);
+      return {
+        tenderCurrency,
+        tenderAmount: safeTender,
+        totalUsd,
+        totalKhr: dueKhr,
+        isExact: false,
+        isShort: true,
+        shortfallKhr: shortKhr,
+        shortfallUsd: shortKhr / safeRate,
+        splitUsd: 0,
+        splitKhr: 0,
+        allKhr: 0,
+        formattedSplit: `-${shortKhr.toLocaleString('en-US')} ៛`,
+        formattedAllKhr: `-${shortKhr.toLocaleString('en-US')} ៛`,
+      };
+    }
+
+    const allKhr = Math.round(diffKhr / 100) * 100;
+    const splitUsd = Math.floor(allKhr / safeRate);
+    const splitKhr = Math.round((allKhr - splitUsd * safeRate) / 100) * 100;
+
+    let formattedSplit = '';
+    if (splitUsd > 0 && splitKhr > 0) {
+      formattedSplit = `$${splitUsd}.00 + ${splitKhr.toLocaleString('en-US')} ៛`;
+    } else if (splitUsd > 0) {
+      formattedSplit = `$${splitUsd}.00`;
+    } else {
+      formattedSplit = `${splitKhr.toLocaleString('en-US')} ៛`;
+    }
+
+    return {
+      tenderCurrency,
+      tenderAmount: safeTender,
+      totalUsd,
+      totalKhr: dueKhr,
+      isExact: false,
+      isShort: false,
+      shortfallKhr: 0,
+      shortfallUsd: 0,
+      splitUsd,
+      splitKhr,
+      allKhr,
+      formattedSplit,
+      formattedAllKhr: `${allKhr.toLocaleString('en-US')} ៛`,
+    };
+  }
+
+  // tenderCurrency === 'USD'
+  const diffUsd = safeTender - totalUsd;
+
+  if (Math.abs(diffUsd) < 0.005) {
+    return {
+      tenderCurrency,
+      tenderAmount: safeTender,
+      totalUsd,
+      totalKhr,
+      isExact: true,
+      isShort: false,
+      shortfallKhr: 0,
+      shortfallUsd: 0,
+      splitUsd: 0,
+      splitKhr: 0,
+      allKhr: 0,
+      formattedSplit: '$0.00',
+      formattedAllKhr: '0 ៛',
+    };
+  }
+
+  if (diffUsd < 0) {
+    const shortUsd = Math.abs(diffUsd);
+    const shortKhr = Math.round((shortUsd * safeRate) / 100) * 100;
+    return {
+      tenderCurrency,
+      tenderAmount: safeTender,
+      totalUsd,
+      totalKhr,
+      isExact: false,
+      isShort: true,
+      shortfallKhr: shortKhr,
+      shortfallUsd: shortUsd,
+      splitUsd: 0,
+      splitKhr: 0,
+      allKhr: 0,
+      formattedSplit: `-$${shortUsd.toFixed(2)}`,
+      formattedAllKhr: `-${shortKhr.toLocaleString('en-US')} ៛`,
+    };
+  }
+
+  let splitUsd = Math.floor(diffUsd);
+  const remainderCents = diffUsd - splitUsd;
+  let splitKhr = Math.round((remainderCents * safeRate) / 100) * 100;
+  if (splitKhr >= safeRate) {
+    splitUsd += 1;
+    splitKhr = 0;
+  }
+
+  const allKhr = Math.round((diffUsd * safeRate) / 100) * 100;
+
+  let formattedSplit = '';
+  if (splitUsd > 0 && splitKhr > 0) {
+    formattedSplit = `$${splitUsd}.00 + ${splitKhr.toLocaleString('en-US')} ៛`;
+  } else if (splitUsd > 0) {
+    formattedSplit = `$${splitUsd}.00`;
+  } else {
+    formattedSplit = `${splitKhr.toLocaleString('en-US')} ៛`;
+  }
+
+  return {
+    tenderCurrency,
+    tenderAmount: safeTender,
+    totalUsd,
+    totalKhr,
+    isExact: false,
+    isShort: false,
+    shortfallKhr: 0,
+    shortfallUsd: 0,
+    splitUsd,
+    splitKhr,
+    allKhr,
+    formattedSplit,
+    formattedAllKhr: `${allKhr.toLocaleString('en-US')} ៛`,
+  };
+}

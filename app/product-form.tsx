@@ -7,6 +7,7 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -265,12 +266,6 @@ export default function ProductFormScreen() {
           tr(`Found product: ${info.name}`, `រកឃើញព័ត៌មានទំនិញ៖ ${info.name}`),
           { tone: 'success', duration: 3500 }
         );
-      } else {
-        const smart = buildSmartBarcodeName(code);
-        if (smart.name && !name) {
-          setName(smart.name);
-          autoFilledNameRef.current = smart.name;
-        }
       }
     } catch {
       // quiet fallback
@@ -455,11 +450,16 @@ export default function ProductFormScreen() {
         </Press>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
+          showsVerticalScrollIndicator={false}
+        >
         {/* 1. Light Product Image Card with Generous Gap */}
         <Rise index={0}>
           <View style={styles.sectionCard}>
@@ -952,6 +952,7 @@ export default function ProductFormScreen() {
           </Btn>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Barcode Camera Scanner Modal */}
       <CameraScanner

@@ -1,7 +1,7 @@
 import React,{useId,useState} from 'react';
-import {KeyboardTypeOptions,ScrollView,StyleProp,StyleSheet,Text,TextInput,View,ViewStyle,ActivityIndicator,RefreshControl} from 'react-native';
+import {KeyboardAvoidingView,KeyboardTypeOptions,Platform,ScrollView,StyleProp,StyleSheet,Text,TextInput,View,ViewStyle,ActivityIndicator,RefreshControl} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import Animated,{interpolateColor,useAnimatedStyle,useSharedValue,withTiming} from 'react-native-reanimated';
+import Animated,{interpolate,interpolateColor,useAnimatedStyle,useSharedValue,withTiming} from 'react-native-reanimated';
 import Svg,{Circle,Defs,LinearGradient,Rect,Stop} from 'react-native-svg';
 import {ArrowLeft,ChevronRight,Inbox} from 'lucide-react-native';
 import {C,R,money,khr,roundKhr,shadow} from './theme';
@@ -19,31 +19,37 @@ export function Screen({title,subtitle,children,right,onBack,tabs = true,onRefre
   const pull = async () => {if (!onRefresh) return;setPulling(true);try{await onRefresh();}finally{setPulling(false);}};
   return (
     <SafeAreaView edges={['top']} style={{flex: 1, backgroundColor: C.bg}}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        refreshControl={onRefresh ? <RefreshControl refreshing={refreshing || pulling} onRefresh={pull} tintColor={C.primary} colors={[C.primary]} /> : undefined}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 22, paddingBottom: tabs ? 130 : 60}}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{flex: 1}}
       >
-        {onBack ? (
-          <Rise>
-            <Press onPress={onBack} accessibilityLabel="Go back" style={{alignSelf: 'flex-start', marginBottom: 18}}>
-              <View style={{width: 40, height: 40, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', ...shadow.sm}}>
-                <ArrowLeft size={19} color={C.primary} />
-              </View>
-            </Press>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
+          refreshControl={onRefresh ? <RefreshControl refreshing={refreshing || pulling} onRefresh={pull} tintColor={C.primary} colors={[C.primary]} /> : undefined}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{paddingHorizontal: 20, paddingTop: 22, paddingBottom: tabs ? 130 : 60}}
+        >
+          {onBack ? (
+            <Rise>
+              <Press onPress={onBack} accessibilityLabel="Go back" style={{alignSelf: 'flex-start', marginBottom: 18}}>
+                <View style={{width: 40, height: 40, borderRadius: 14, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', ...shadow.sm}}>
+                  <ArrowLeft size={19} color={C.primary} />
+                </View>
+              </Press>
+            </Rise>
+          ) : null}
+          <Rise index={onBack ? 1 : 0}>
+            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
+              <Text numberOfLines={1} style={{flex: 1, color: C.primary, fontSize: 30, fontWeight: '800', letterSpacing: -0.6}}>{title}</Text>
+              {right}
+            </View>
+            {subtitle ? <Text style={{color: C.muted, marginTop: 6, fontSize: 13.5, lineHeight: 20}}>{subtitle}</Text> : null}
+            <View style={{height: 22}} />
           </Rise>
-        ) : null}
-        <Rise index={onBack ? 1 : 0}>
-          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
-            <Text numberOfLines={1} style={{flex: 1, color: C.primary, fontSize: 30, fontWeight: '800', letterSpacing: -0.6}}>{title}</Text>
-            {right}
-          </View>
-          {subtitle ? <Text style={{color: C.muted, marginTop: 6, fontSize: 13.5, lineHeight: 20}}>{subtitle}</Text> : null}
-          <View style={{height: 22}} />
-        </Rise>
-        {children}
-      </ScrollView>
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -145,6 +151,8 @@ export function Field({placeholder,value,onChangeText,keyboardType = 'default',s
   const box = useAnimatedStyle(() => ({
     borderColor: interpolateColor(focus.value, [0, 1], [C.border, C.primary]),
     backgroundColor: interpolateColor(focus.value, [0, 1], [C.surface, '#FFFFFF']),
+    transform: [{ scale: interpolate(focus.value, [0, 1], [1, 1.018]) }],
+    shadowOpacity: interpolate(focus.value, [0, 1], [0, 0.12]),
   }));
   return (
     <View style={[{marginBottom: 14}, style]}>

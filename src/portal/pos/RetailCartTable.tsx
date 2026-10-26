@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
 import { Product } from '../../api';
 import { khr, money } from '../../theme';
@@ -10,12 +10,14 @@ export function RetailCartTable({
   lines,
   rate,
   onAdd,
+  onSetQty,
   onRemove,
   tr,
 }: {
   lines: PortalController['cartLines'];
   rate: number;
   onAdd: (product: Product, delta: number) => void;
+  onSetQty?: (product: Product, targetQty: number) => void;
   onRemove: (productId: string) => void;
   tr: PortalController['tr'];
 }) {
@@ -151,17 +153,32 @@ export function RetailCartTable({
               >
                 <Minus size={13} color={P.text} />
               </Press>
-              <Text
+              <TextInput
+                value={String(qty)}
+                onChangeText={(txt) => {
+                  const cleaned = txt.replace(/\D/g, '');
+                  if (!cleaned) return;
+                  const val = parseInt(cleaned, 10);
+                  if (onSetQty) onSetQty(product, val);
+                  else onAdd(product, val - qty);
+                }}
+                keyboardType="number-pad"
                 style={{
-                  minWidth: 20,
+                  minWidth: 32,
+                  height: 25,
                   textAlign: 'center',
                   fontWeight: '800',
                   color: P.text,
-                  fontSize: 13,
+                  fontSize: 12.5,
+                  backgroundColor: '#FFFFFF',
+                  borderWidth: 1,
+                  borderColor: P.border,
+                  borderRadius: 6,
+                  paddingHorizontal: 2,
+                  paddingVertical: 0,
+                  ...(Platform.OS === 'web' ? { outline: 'none' as any } : {}),
                 }}
-              >
-                {qty}
-              </Text>
+              />
               <Press
                 onPress={() => onAdd(product, 1)}
                 style={{

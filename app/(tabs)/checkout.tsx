@@ -33,6 +33,8 @@ import { useSounds } from '../../src/hooks/useSounds';
 import { useLanguage } from '../../src/i18n';
 import { useToast } from '../../src/toast';
 import { markEventNotified } from '../../src/liveSync';
+import { CashTenderModal } from '../../src/components/CashTenderModal';
+import { CambodiaCashExchange } from '../../src/exchangeRate';
 import { sameBarcode } from '../../src/barcode';
 import { CameraScanner, ScanResult } from '../../src/components/CameraScanner';
 import { ReceiptModal } from '../../src/components/ReceiptModal';
@@ -84,6 +86,7 @@ export default function Checkout() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [paidCurrency, setPaidCurrency] = useState<'USD' | 'KHR'>('KHR');
+  const [showTenderModal, setShowTenderModal] = useState(false);
   const params = useLocalSearchParams<{ tier?: string }>();
   const [tier, setTier] = useState<'RETAIL' | 'WHOLESALE'>(
     params.tier === 'wholesale' ? 'WHOLESALE' : 'RETAIL'
@@ -282,6 +285,60 @@ export default function Checkout() {
     }
   }
 
+  function setDirectUnits(p: Product, targetQty: number) {
+    const val = Math.max(0, targetQty);
+    if (val > p.stock) {
+      toast.show(tr(`Cannot exceed stock of ${p.stock}`, `មិនអាចលើសស្តុក ${p.stock} ទេ`), { tone: 'warning' });
+      return;
+    }
+    setCart((prev) => {
+      if (val === 0) {
+        const copy = { ...prev };
+        delete copy[p.id];
+        return copy;
+      }
+      return { ...prev, [p.id]: { cases: 0, loose: val } };
+    });
+  }
+
+  function setDirectCases(p: Product, targetCases: number) {
+    const cQty = p.caseQty || 24;
+    const cur = cart[p.id] || { cases: 0, loose: 0 };
+    const safeCases = Math.max(0, targetCases);
+    const totalUnits = safeCases * cQty + cur.loose;
+    if (totalUnits > p.stock) {
+      toast.show(tr(`Cannot exceed stock of ${p.stock}`, `មិនអាចលើសស្តុក ${p.stock} ទេ`), { tone: 'warning' });
+      return;
+    }
+    setCart((prev) => {
+      if (safeCases === 0 && cur.loose === 0) {
+        const copy = { ...prev };
+        delete copy[p.id];
+        return copy;
+      }
+      return { ...prev, [p.id]: { cases: safeCases, loose: cur.loose } };
+    });
+  }
+
+  function setDirectLoose(p: Product, targetLoose: number) {
+    const cQty = p.caseQty || 24;
+    const cur = cart[p.id] || { cases: 0, loose: 0 };
+    const safeLoose = Math.max(0, targetLoose);
+    const totalUnits = cur.cases * cQty + safeLoose;
+    if (totalUnits > p.stock) {
+      toast.show(tr(`Cannot exceed stock of ${p.stock}`, `មិនអាចលើសស្តុក ${p.stock} ទេ`), { tone: 'warning' });
+      return;
+    }
+    setCart((prev) => {
+      if (cur.cases === 0 && safeLoose === 0) {
+        const copy = { ...prev };
+        delete copy[p.id];
+        return copy;
+      }
+      return { ...prev, [p.id]: { cases: cur.cases, loose: safeLoose } };
+    });
+  }
+
   function scanProduct(code: string, qty = 1): ScanResult {
     const clean = code.trim();
     const p = products.find((x) => sameBarcode(x.barcode, clean));
@@ -320,7 +377,11 @@ export default function Checkout() {
     };
   }
 
-  async function checkout(fromScanner = false) {
+  async function checkout(fromScanner = false, tenderInfo?: {
+    tenderAmount: number;
+    tenderCurrency: 'USD' | 'KHR';
+    exchange: CambodiaCashExchange;
+  }) {
     if (!units || busy) return;
     setBusy(true);
     setError('');
@@ -329,7 +390,7 @@ export default function Checkout() {
         method: 'POST',
         body: JSON.stringify({
           idempotencyKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          paidCurrency,
+          paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
           priceTier: tier,
           items: selected.map((p) => {
             const item = getItemQty(p);
@@ -356,11 +417,21 @@ export default function Checkout() {
         }),
       });
 
+      const enhancedSale: Sale = {
+        ...sale,
+        paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
+        tenderAmount: tenderInfo?.tenderAmount,
+        tenderCurrency: tenderInfo?.tenderCurrency || paidCurrency,
+        changeText: tenderInfo?.exchange.formattedSplit,
+        changeSplit: tenderInfo?.exchange.formattedSplit,
+        changeAllKhr: tenderInfo?.exchange.formattedAllKhr,
+      };
+
       markEventNotified(`sale:${sale.id}`);
       if (fromScanner) setScanning(false);
       setCartExpanded(false);
-      setLastReceipt(sale);
-      setReceipt(sale);
+      setLastReceipt(enhancedSale);
+      setReceipt(enhancedSale);
       playCheckout();
       setCart({});
       toast.show(
@@ -368,7 +439,7 @@ export default function Checkout() {
         {
           tone: 'success',
           actionLabel: tr('View receipt', 'មើលបង្កាន់ដៃ'),
-          onAction: () => setReceipt(sale),
+          onAction: () => setReceipt(enhancedSale),
           duration: 7500,
         }
       );
@@ -752,9 +823,15 @@ export default function Checkout() {
                             >
                               <Minus size={13} color="#0D9488" />
                             </Press>
-                            <Text style={styles.uomQtyValue}>
-                              {itemQty.cases} <Text style={{ fontSize: 10, color: C.muted }}>{caseName}</Text>
-                            </Text>
+                            <TextInput
+                              value={String(itemQty.cases)}
+                              onChangeText={(txt) => {
+                                const val = parseInt(txt.replace(/\D/g, ''), 10);
+                                setDirectCases(p, isNaN(val) ? 0 : val);
+                              }}
+                              keyboardType="number-pad"
+                              style={[styles.uomQtyValue, { minWidth: 28, paddingVertical: 0, textAlign: 'center' }]}
+                            />
                             <Press
                               disabled={!canAddUnits(p, cQty)}
                               onPress={() => addCase(p, 1)}
@@ -786,9 +863,15 @@ export default function Checkout() {
                             >
                               <Minus size={13} color={C.primary} />
                             </Press>
-                            <Text style={styles.uomQtyValue}>
-                              {itemQty.loose} <Text style={{ fontSize: 10, color: C.muted }}>{baseName}</Text>
-                            </Text>
+                            <TextInput
+                              value={String(itemQty.loose)}
+                              onChangeText={(txt) => {
+                                const val = parseInt(txt.replace(/\D/g, ''), 10);
+                                setDirectLoose(p, isNaN(val) ? 0 : val);
+                              }}
+                              keyboardType="number-pad"
+                              style={[styles.uomQtyValue, { minWidth: 28, paddingVertical: 0, textAlign: 'center' }]}
+                            />
                             <Press
                               disabled={!canAddUnits(p, 1)}
                               onPress={() => addLoose(p, 1)}
@@ -990,9 +1073,15 @@ export default function Checkout() {
                             >
                               <Minus size={11} color="#0D9488" />
                             </Press>
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#0F766E', minWidth: 16, textAlign: 'center' }}>
-                              {itemQty.cases}c
-                            </Text>
+                            <TextInput
+                              value={String(itemQty.cases)}
+                              onChangeText={(txt) => {
+                                const val = parseInt(txt.replace(/\D/g, ''), 10);
+                                setDirectCases(p, isNaN(val) ? 0 : val);
+                              }}
+                              keyboardType="number-pad"
+                              style={{ fontSize: 11, fontWeight: '800', color: '#0F766E', minWidth: 20, textAlign: 'center', padding: 0 }}
+                            />
                             <Press
                               disabled={!canAddUnits(p, cQty)}
                               onPress={() => addCase(p, 1)}
@@ -1010,9 +1099,15 @@ export default function Checkout() {
                             >
                               <Minus size={11} color={C.primary} />
                             </Press>
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: C.primary, minWidth: 16, textAlign: 'center' }}>
-                              +{itemQty.loose}
-                            </Text>
+                            <TextInput
+                              value={String(itemQty.loose)}
+                              onChangeText={(txt) => {
+                                const val = parseInt(txt.replace(/\D/g, ''), 10);
+                                setDirectLoose(p, isNaN(val) ? 0 : val);
+                              }}
+                              keyboardType="number-pad"
+                              style={{ fontSize: 11, fontWeight: '800', color: C.primary, minWidth: 20, textAlign: 'center', padding: 0 }}
+                            />
                             <Press
                               disabled={!canAddUnits(p, 1)}
                               onPress={() => addLoose(p, 1)}
@@ -1030,7 +1125,15 @@ export default function Checkout() {
                           >
                             <Minus size={13} color={C.primary} />
                           </Press>
-                          <Text style={styles.stepperSmallQty}>{totalU}</Text>
+                          <TextInput
+                            value={String(totalU)}
+                            onChangeText={(txt) => {
+                              const val = parseInt(txt.replace(/\D/g, ''), 10);
+                              setDirectUnits(p, isNaN(val) ? 0 : val);
+                            }}
+                            keyboardType="number-pad"
+                            style={[styles.stepperSmallQty, { minWidth: 28, padding: 0 }]}
+                          />
                           <Press
                             disabled={!canAddUnits(p, 1)}
                             onPress={() => addLoose(p, 1)}
@@ -1106,7 +1209,7 @@ export default function Checkout() {
           icon={CheckCircle2}
           loading={busy}
           disabled={!units}
-          onPress={() => void checkout(false)}
+          onPress={() => setShowTenderModal(true)}
           style={{ height: 50, borderRadius: 16 }}
         >
           {busy
@@ -1116,6 +1219,19 @@ export default function Checkout() {
             : tr('Tap items or Scan to Checkout', 'ជ្រើសទំនិញ ឬស្កេនដើម្បីទូទាត់')}
         </Btn>
       </View>
+
+      <CashTenderModal
+        visible={showTenderModal}
+        totalKhr={total * rate}
+        totalUsd={total}
+        rate={rate}
+        busy={busy}
+        onClose={() => setShowTenderModal(false)}
+        onConfirm={(tender) => {
+          setShowTenderModal(false);
+          void checkout(false, tender);
+        }}
+      />
 
       <ReceiptModal sale={receipt} onClose={() => setReceipt(null)} />
       <CameraScanner

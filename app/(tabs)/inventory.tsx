@@ -213,21 +213,16 @@ export default function Inventory() {
     });
     setBarcode(clean);
 
-    // Immediately set a smart barcode name so the name field is never empty,
-    // then upgrade it with the online product catalog lookup!
-    const fallback = buildSmartBarcodeName(clean);
-    if (!name.trim() || isDifferentBarcode || name.trim() === autoFilledNameRef.current) {
-      autoFilledNameRef.current = fallback.name;
-      setName(fallback.name);
+    // If unknown barcode, do not generate fake names; user will enter real name.
+    if (isDifferentBarcode) {
+      setName('');
+      autoFilledNameRef.current = '';
     }
 
-    // Do NOT await the online catalog lookup: it is a network round-trip and made the scanner feel
-    // slow on every unknown barcode. The success feedback is instant, and the name field upgrades
-    // itself as soon as the lookup resolves.
     void resolveBarcodeName(clean);
     return {
       ok: true,
-      label: `${fallback.name} (+${qty})`,
+      label: `${clean} (+${qty})`,
     };
   }
 
@@ -326,11 +321,6 @@ export default function Inventory() {
       Date.now().toString(36).toUpperCase() +
       Math.random().toString(36).slice(2, 7).toUpperCase();
     setBarcode(generated);
-    if (!name.trim()) {
-      const smart = buildSmartBarcodeName(generated);
-      autoFilledNameRef.current = smart.name;
-      setName(smart.name);
-    }
   }
 
   /** Upload to the server (Cloudflare R2) when it is configured; otherwise keep the photo on this device. */
