@@ -1147,7 +1147,7 @@ const styles = StyleSheet.create({
   topStickyContainer: {
     backgroundColor: C.surface,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 16,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: C.border,

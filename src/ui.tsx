@@ -23,7 +23,7 @@ export function Screen({title,subtitle,children,right,onBack,tabs = true,onRefre
         keyboardShouldPersistTaps="handled"
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing || pulling} onRefresh={pull} tintColor={C.primary} colors={[C.primary]} /> : undefined}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 14, paddingBottom: tabs ? 130 : 60}}
+        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 22, paddingBottom: tabs ? 130 : 60}}
       >
         {onBack ? (
           <Rise>
