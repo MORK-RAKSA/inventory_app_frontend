@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { P } from '../theme';
 import type { PortalController } from '../usePortalController';
 import { UomHeader } from './UomHeader';

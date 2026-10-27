@@ -1,4 +1,5 @@
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
+import { ScrollView, View } from 'react-native';
 import { Barcode, X } from 'lucide-react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';

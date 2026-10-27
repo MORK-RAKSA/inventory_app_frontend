@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from './components/AppText';
 import React,{useId,useState} from 'react';
-import {KeyboardAvoidingView,KeyboardTypeOptions,Platform,ScrollView,StyleProp,StyleSheet,Text,TextInput,View,ViewStyle,ActivityIndicator,RefreshControl} from 'react-native';
+import {KeyboardAvoidingView,KeyboardTypeOptions,Platform,ScrollView,StyleProp,StyleSheet,View,ViewStyle,ActivityIndicator,RefreshControl} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated,{interpolate,interpolateColor,useAnimatedStyle,useSharedValue,withTiming} from 'react-native-reanimated';
 import Svg,{Circle,Defs,LinearGradient,Rect,Stop} from 'react-native-svg';

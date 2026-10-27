@@ -1,3 +1,4 @@
+import { registerDeviceNotifications } from './deviceNotifications';
 import { useEffect, useRef } from 'react';
 import { Platform, Vibration } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -163,12 +164,14 @@ export function LiveAlertWatcher() {
 
   useEffect(() => {
     let active = true;
+    let registered = false;
 
     async function checkEvents() {
       try {
         const events = await api<LiveActivityEvent[]>(
           `/events?since=${sinceMsRef.current}`
         );
+        if (!registered) { registered = true; void registerDeviceNotifications().catch(() => { registered = false; }); }
         if (!active || !Array.isArray(events) || events.length === 0) return;
 
         const sorted = [...events].sort(
@@ -204,14 +207,6 @@ export function LiveAlertWatcher() {
             continue;
           }
 
-          if (Platform.OS !== 'web') {
-            try {
-              // Real device alert notification via native vibration pattern
-              Vibration.vibrate([0, 160, 90, 160]);
-            } catch {
-              /* ignore vibration error if not supported */
-            }
-          }
 
           if (isPortal) {
             // Portal receives custom toast notification banner

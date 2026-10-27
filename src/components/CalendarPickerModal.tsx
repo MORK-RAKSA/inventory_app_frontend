@@ -1,8 +1,8 @@
+import { AppText as Text } from './AppText';
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Modal,
   StyleSheet,
-  Text,
   View,
   Pressable,
 } from 'react-native';

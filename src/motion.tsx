@@ -1,3 +1,4 @@
+import { AppText as Text } from './components/AppText';
 /**
  * Motion kit — calm, no bounce.
  *
@@ -11,10 +12,9 @@ import {
   Pressable,
   PressableProps,
   StyleProp,
-  Text,
   View,
   ViewStyle,
-} from "react-native";
+} from 'react-native';
 import Animated, {
   Easing,
   FadeIn,

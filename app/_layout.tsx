@@ -1,7 +1,10 @@
+import { AppTextInput as TextInput, AppText as Text } from '../src/components/AppText';
+import {useFonts, NotoSansKhmer_400Regular, NotoSansKhmer_500Medium} from '@expo-google-fonts/noto-sans-khmer';
 import 'react-native-gesture-handler';
+import {useAppUpdates} from '../src/hooks/useAppUpdates';
 import {Stack} from 'expo-router';
 import {useEffect,useState} from 'react';
-import {ActivityIndicator,Text,View,TextInput,KeyboardAvoidingView,Platform,ScrollView,useWindowDimensions} from 'react-native';
+import {ActivityIndicator,View,KeyboardAvoidingView,Platform,ScrollView,useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated,{
   FadeIn,
@@ -163,6 +166,8 @@ function MinimalField({
 }
 
 export default function Root() {
+  const [fontsLoaded, fontsError] = useFonts({ NotoSansKhmer_400Regular, NotoSansKhmer_500Medium });
+  useAppUpdates();
   const { width } = useWindowDimensions();
   const isDesktopWeb = Platform.OS === 'web' && width >= 900;
   const [booted, setBooted] = useState(false);
@@ -323,7 +328,7 @@ export default function Root() {
     }
   };
 
-  if (!booted) {
+  if (!booted || (!fontsLoaded && !fontsError)) {
     return (
       <Animated.View
         entering={FadeIn.duration(220)}

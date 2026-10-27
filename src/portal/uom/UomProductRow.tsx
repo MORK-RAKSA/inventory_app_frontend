@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Product } from '../../api';
 import { khr, money, roundKhr } from '../../theme';
 import { Press } from '../../motion';
@@ -19,7 +20,7 @@ export function UomProductRow({
 }) {
   const baseUnit = p.baseUnit || 'Piece';
   const caseUnit = p.caseUnitName || 'Case';
-  const caseQty = p.caseQty || 24;
+  const caseQty = p.caseQty || 1;
   const retailUnitKhr = roundKhr(p.priceUsd * rate);
   const retailFullCaseKhr = retailUnitKhr * caseQty;
   const hasWholesale = Boolean(p.wholesalePriceUsd && p.wholesalePriceUsd > 0);

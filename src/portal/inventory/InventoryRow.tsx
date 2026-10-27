@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Edit3, Trash2 } from 'lucide-react-native';
 import { Product } from '../../api';
 import { khr, money } from '../../theme';

@@ -1,4 +1,5 @@
-import { ActivityIndicator, Text } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { ActivityIndicator} from 'react-native';
 import { Check } from 'lucide-react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';

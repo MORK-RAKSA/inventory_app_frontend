@@ -1,5 +1,7 @@
+import { registerDeviceNotifications } from '../../src/deviceNotifications';
+import { AppText as Text } from '../../src/components/AppText';
 import {useEffect,useState,ReactNode} from 'react';
-import {Text,View,StyleProp,ViewStyle} from 'react-native';
+import {Platform,View,StyleProp,ViewStyle} from 'react-native';
 import {useRouter} from 'expo-router';
 import {ArrowUpRight,Boxes,TrendingUp,Plus,ScanLine,ChartNoAxesCombined,Warehouse,PackageCheck,Layers,AlertTriangle,Clock,PackageX,ChevronRight,Bell} from 'lucide-react-native';
 import {useLiveData} from '../../src/hooks/useLiveData';
@@ -59,10 +61,10 @@ export default function Dashboard() {
       title={greeting}
       subtitle={`${username || 'EasySell'} · ${tr('Here is your store today','នេះគឺជាស្ថានភាពហាងរបស់អ្នកថ្ងៃនេះ')}`}
       right={
-        <Press onPress={() => router.push('/notifications' as any)} accessibilityLabel="Notifications" scale={0.92}>
+        <Press onPress={() => { if (Platform.OS === 'web') router.push('/notifications' as any); else void registerDeviceNotifications().catch(() => {}); }} accessibilityLabel="Notifications" scale={0.92}>
           <View>
             <IconBadge icon={Bell} size={42} />
-            {unread > 0 && (
+            {Platform.OS === 'web' && unread > 0 && (
               <View style={{position: 'absolute', top: -5, right: -5, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: C.red, borderWidth: 2, borderColor: C.bg, alignItems: 'center', justifyContent: 'center'}}>
                 <Text style={{color: '#fff', fontSize: 10.5, fontWeight: '800'}}>{unread > 99 ? '99+' : unread}</Text>
               </View>

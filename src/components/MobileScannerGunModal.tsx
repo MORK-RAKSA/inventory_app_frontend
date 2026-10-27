@@ -1,3 +1,5 @@
+import { AppTextInput as TextInput, AppText as Text } from './AppText';
+import { insideFrame, confirmRead } from '../scannerAcceptance';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -5,8 +7,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   Vibration,
   View,
 } from 'react-native';
@@ -168,24 +168,8 @@ function isInsideGunFrame(
   bounds: { origin: { x: number; y: number }; size: { width: number; height: number } } | undefined,
   layout: { width: number; height: number }
 ): boolean {
-  if (!bounds || !layout.width || !layout.height) return true;
-  const frameTop = 34;
-  const frameH = 164;
-  const frameLeft = 26;
-  const frameWidth = layout.width - 52;
-
-  const centerX = bounds.origin.x + bounds.size.width / 2;
-  const centerY = bounds.origin.y + bounds.size.height / 2;
-
-  const marginX = frameWidth * 0.15;
-  const marginY = frameH * 0.20;
-
-  return (
-    centerX >= frameLeft - marginX &&
-    centerX <= frameLeft + frameWidth + marginX &&
-    centerY >= frameTop - marginY &&
-    centerY <= frameTop + frameH + marginY
-  );
+  if (!layout.width || !layout.height) return false;
+  return insideFrame(bounds, { x: 26, y: 34, width: layout.width - 52, height: 164 });
 }
 
 export function MobileScannerGunModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -260,16 +244,18 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
 
   const frameStyle = useAnimatedStyle(() => ({
     borderColor: flash.value > 0.5 ? G.success : flash.value < -0.5 ? G.danger : 'rgba(255,255,255,0.32)',
-    backgroundColor: flash.value > 0.5 ? 'rgba(16,185,129,0.16)' : flash.value < -0.5 ? 'rgba(248,113,113,0.16)' : 'transparent',
+    backgroundColor: flash.value > 0.5 ? 'rgba(16,185,129,0.48)' : flash.value < -0.5 ? 'rgba(248,113,113,0.48)' : 'transparent',
   }));
+
+  const screenFeedback = useAnimatedStyle(() => ({ backgroundColor: flash.value > 0.1 ? 'rgba(16,185,129,0.38)' : flash.value < -0.1 ? 'rgba(239,68,68,0.38)' : 'transparent' }));
 
   function pulse(kind: 'ok' | 'fail') {
     // Animated flash: 1 = success/green, -1 = fail/red, 0 = idle
     const target = kind === 'ok' ? 1 : -1;
-    flash.value = withTiming(target, { duration: 90 });
+    flash.value = withTiming(target, { duration: 25 });
     // Reset after animation completes so next scan starts fresh
     setTimeout(() => {
-      flash.value = withTiming(0, { duration: 260 });
+      flash.value = withTiming(0, { duration: 120 });
     }, 240);
   }
 
@@ -394,7 +380,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
    * symbologies still require two matching frames before they are beamed.
    */
   function handleBarcodeScanned(result: { data?: string; type?: string; bounds?: any }) {
-    if (!isInsideGunFrame(result?.bounds, gunCameraLayout.current)) return;
+    if (!isInsideGunFrame(result?.bounds, gunCameraLayout.current)) { pendingRead.current.n = 0; return; }
     const raw = (result?.data || '').trim();
     if (!raw) return;
     setCameraReady(true);
@@ -405,6 +391,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
     const now = Date.now();
     if (isDuplicateScan(latch.current, code, now, 800)) return;
 
+    if (!confirmRead(pendingRead.current, code, now)) return;
     rememberScan(latch.current, code, now);
     void handleCode(code);
   }
@@ -605,6 +592,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
             </View>
           )}
 
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, screenFeedback]} />
           {/* Aiming frame + laser */}
           {permission?.granted ? (
             <>

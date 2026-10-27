@@ -1,4 +1,5 @@
-import { ActivityIndicator, Modal, ScrollView, Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { ActivityIndicator, Modal, ScrollView, View } from 'react-native';
 import { Barcode, Check, Layers, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react-native';
 import { lookupBarcodeOnline } from '../../barcodeLookup';
 import { Press } from '../../motion';

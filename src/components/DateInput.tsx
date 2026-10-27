@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from './AppText';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {Dimensions,FlatList,Modal,Platform,Text,TextInput,View} from 'react-native';
+import {Dimensions,FlatList,Modal,Platform,View} from 'react-native';
 import {CalendarDays,ChevronLeft,ChevronRight,X} from 'lucide-react-native';
 import Animated,{FadeIn,FadeOut,SlideInDown,SlideOutDown} from 'react-native-reanimated';
 import {Press} from '../motion';

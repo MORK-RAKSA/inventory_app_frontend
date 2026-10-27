@@ -1,3 +1,4 @@
+import { AppText as Text } from './AppText';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -5,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
   View,
 } from 'react-native';
 import Animated, {

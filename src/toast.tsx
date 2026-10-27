@@ -1,5 +1,6 @@
+import { AppText as Text } from './components/AppText';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Text, ToastAndroid, View } from 'react-native';
+import { Animated, Easing, Platform, ToastAndroid, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlertCircle, AlertTriangle, Check, Info, X } from 'lucide-react-native';
 import { Press } from './motion';

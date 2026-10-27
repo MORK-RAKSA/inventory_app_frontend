@@ -1,5 +1,6 @@
+import { AppText as Text } from './AppText';
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Placeholder } from '../ui';
@@ -45,12 +46,7 @@ export function ProductImage({
       setImage(uri);
       return;
     }
-    void loadImageMap().then((m) => {
-      if (active) setImage(m[id]);
-    });
-    return () => {
-      active = false;
-    };
+    setImage(undefined);
   }, [id, uri]);
 
   const handlePress = () => {

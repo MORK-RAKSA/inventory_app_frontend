@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { UomConfig } from '../../api';
 import { Press } from '../../motion';

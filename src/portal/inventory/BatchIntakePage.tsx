@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import {
   ArrowLeft,
   Barcode,
@@ -80,7 +81,7 @@ export function BatchIntakePage({ portal }: { portal: PortalController }) {
       stock: '1',
       uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
       wholesalePrice: existing?.wholesalePriceUsd
-        ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 24) * rate))
+        ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 1) * rate))
         : '',
     };
 
@@ -758,6 +759,7 @@ export function BatchIntakePage({ portal }: { portal: PortalController }) {
                             width: '100%',
                           }}
                         >
+                          <option value="">{tr('Select packaging', 'ជ្រើសឯកតាដុំធំ')}</option>
                           {(() => {
                             const currentBase =
                               row.baseUnit ||
@@ -775,6 +777,9 @@ export function BatchIntakePage({ portal }: { portal: PortalController }) {
                           })()}
                         </select>
                       ) : null}
+                      <Press onPress={() => openUomConfigForRow(row.id)} style={{ paddingVertical: 6 }}>
+                        <Text style={{ color: P.primary, fontSize: 12 }}>{tr('Add packaging', 'បន្ថែមឯកតាដុំធំ')}</Text>
+                      </Press>
                     </View>
                   </View>
 

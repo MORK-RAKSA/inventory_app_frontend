@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from '../../src/components/AppText';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Plus,

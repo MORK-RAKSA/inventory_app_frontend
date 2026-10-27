@@ -1,10 +1,10 @@
+import { AppText as Text } from './AppText';
 import React from 'react';
 import {
   Modal,
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';

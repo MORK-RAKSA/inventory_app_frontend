@@ -1,4 +1,5 @@
-import { TextInput, View } from 'react-native';
+import { AppTextInput as TextInput } from '../../components/AppText';
+import { View } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';

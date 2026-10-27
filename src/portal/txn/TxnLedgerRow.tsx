@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Sale } from '../../api';
 import { khr, money } from '../../theme';
 import { Press } from '../../motion';

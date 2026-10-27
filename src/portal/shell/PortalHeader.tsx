@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Barcode, Layers, Plus, RefreshCw } from 'lucide-react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';

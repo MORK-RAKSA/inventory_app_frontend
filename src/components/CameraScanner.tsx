@@ -1,5 +1,7 @@
+import { AppTextInput as TextInput, AppText as Text } from './AppText';
+import { insideFrame, confirmRead } from '../scannerAcceptance';
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Text, View, TextInput, Platform, Alert, ScrollView, Vibration, StyleSheet } from 'react-native';
+import { Modal, View, Platform, Alert, ScrollView, Vibration, StyleSheet } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { CameraView, useCameraPermissions, BarcodeType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -86,25 +88,8 @@ function isInsideScannerFrame(
   layout: { width: number; height: number },
   isCheckout: boolean
 ): boolean {
-  if (!bounds || !layout.width || !layout.height) return true;
-  const topFraction = isCheckout ? 0.14 : 0.24;
-  const frameH = isCheckout ? 142 : 165;
-  const frameTop = layout.height * topFraction;
-  const frameLeft = layout.width * 0.07;
-  const frameWidth = layout.width * 0.86;
-
-  const centerX = bounds.origin.x + bounds.size.width / 2;
-  const centerY = bounds.origin.y + bounds.size.height / 2;
-
-  const marginX = frameWidth * 0.15;
-  const marginY = frameH * 0.20;
-
-  return (
-    centerX >= frameLeft - marginX &&
-    centerX <= frameLeft + frameWidth + marginX &&
-    centerY >= frameTop - marginY &&
-    centerY <= frameTop + frameH + marginY
-  );
+  if (!layout.width || !layout.height) return false;
+  return insideFrame(bounds, { x: layout.width * 0.07, y: layout.height * (isCheckout ? 0.14 : 0.24), width: layout.width * 0.86, height: isCheckout ? 142 : 165 });
 }
 
 export function CameraScanner({
@@ -282,9 +267,9 @@ export function CameraScanner({
       if (Platform.OS !== 'web') Vibration.vibrate([0, 50, 40, 50]);
       setFailReason(messageText);
       flash.value = withSequence(
-        withTiming(-1, { duration: 90 }),
-        withTiming(-1, { duration: 550 }),
-        withTiming(0, { duration: 240 }),
+        withTiming(-1, { duration: 25 }),
+        withTiming(-1, { duration: 180 }),
+        withTiming(0, { duration: 120 }),
       );
       bannerTimer.current = setTimeout(() => {
         setBannerState('idle');
@@ -294,9 +279,9 @@ export function CameraScanner({
       if (Platform.OS !== 'web') Vibration.vibrate(45);
       setLastLabel(messageText);
       flash.value = withSequence(
-        withTiming(1, { duration: 90 }),
-        withTiming(1, { duration: 420 }),
-        withTiming(0, { duration: 220 }),
+        withTiming(1, { duration: 25 }),
+        withTiming(1, { duration: 180 }),
+        withTiming(0, { duration: 120 }),
       );
       bannerTimer.current = setTimeout(() => {
         setBannerState('idle');
@@ -304,14 +289,7 @@ export function CameraScanner({
     }
   }
 
-  /**
-   * Entry point for every camera / detector read.
-   * - Rejects EAN/UPC reads whose check digit is wrong (misreads produce a *different* product ID).
-   * - GTIN symbologies (EAN-8/13, UPC-A, ITF-14) are accepted on the FIRST frame because their check
-   *   digit already proves the read is intact. Other symbologies need two matching frames.
-   * - Strict Cashier Gate: while the same barcode is held still in front of camera, it triggers ONCE
-   *   and stays locked indefinitely. It unlocks ONLY after barcode is moved out of view for 800ms.
-   */
+  /** Validate camera reads, require three stable detections, then apply duplicate suppression. */
   function cameraRead(raw: string, type?: string) {
     const value = raw.trim();
     if (!value) return;
@@ -328,6 +306,7 @@ export function CameraScanner({
     if (isDuplicateScan(latch.current, cleanCode, now, 800)) return;
 
     // First detection: lock gate immediately so upcoming frames of this barcode are ignored
+    if (!confirmRead(pendingRead.current, cleanCode, now)) return;
     rememberScan(latch.current, cleanCode, now);
     void scanned(cleanCode);
   }
@@ -398,7 +377,21 @@ export function CameraScanner({
       try {
         const detector = await getWebBarcodeDetector();
         if (!detector) return;
-        const results = await detector.detect(video);
+        // Decode only the visible viewfinder, accounting for the preview cover crop.
+        const layout = cameraLayout.current;
+        if (!layout.width || !layout.height) return;
+        const scale = Math.max(layout.width / video.videoWidth, layout.height / video.videoHeight);
+        const offsetX = (video.videoWidth * scale - layout.width) / 2;
+        const offsetY = (video.videoHeight * scale - layout.height) / 2;
+        const crop = document.createElement('canvas');
+        crop.width = Math.round(layout.width * 0.86 / scale);
+        crop.height = Math.round((isCheckout ? 142 : 165) / scale);
+        const ctx = crop.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(video, (layout.width * 0.07 + offsetX) / scale,
+          (layout.height * (isCheckout ? 0.14 : 0.24) + offsetY) / scale,
+          crop.width, crop.height, 0, 0, crop.width, crop.height);
+        const results = await detector.detect(crop);
         const value = results?.[0]?.rawValue;
         if (value) cameraRead(String(value), results?.[0]?.format);
       } catch {
@@ -422,7 +415,21 @@ export function CameraScanner({
         const detector = await getWebBarcodeDetector();
         if (detector) {
           try {
-            const results = await detector.detect(video);
+            // Decode only the visible viewfinder, accounting for the preview cover crop.
+        const layout = cameraLayout.current;
+        if (!layout.width || !layout.height) return;
+        const scale = Math.max(layout.width / video.videoWidth, layout.height / video.videoHeight);
+        const offsetX = (video.videoWidth * scale - layout.width) / 2;
+        const offsetY = (video.videoHeight * scale - layout.height) / 2;
+        const crop = document.createElement('canvas');
+        crop.width = Math.round(layout.width * 0.86 / scale);
+        crop.height = Math.round((isCheckout ? 142 : 165) / scale);
+        const ctx = crop.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(video, (layout.width * 0.07 + offsetX) / scale,
+          (layout.height * (isCheckout ? 0.14 : 0.24) + offsetY) / scale,
+          crop.width, crop.height, 0, 0, crop.width, crop.height);
+        const results = await detector.detect(crop);
             if (results && results.length > 0 && results[0].rawValue) {
               void scanned(String(results[0].rawValue));
               return;
@@ -628,6 +635,7 @@ export function CameraScanner({
               barcodeScannerSettings={{ barcodeTypes: ALL_BARCODE_TYPES }}
               onBarcodeScanned={(e: any) => {
                 if (!isInsideScannerFrame(e.bounds, cameraLayout.current, isCheckout)) {
+                  pendingRead.current.n = 0;
                   return;
                 }
                 setCameraReady(true);

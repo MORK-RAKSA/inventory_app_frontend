@@ -6,7 +6,7 @@ import { subscribeLiveActivity } from '../liveSync';
 export function useLiveData(kind: 'products' | 'sales' | 'all' = 'all') {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [rate, setRate] = useState(4100);
+  const [rate, setRate] = useState(0);
   const [error, setError] = useState('');
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);

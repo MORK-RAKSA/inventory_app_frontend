@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, View } from 'react-native';
 import {
   ArrowLeft,
   Barcode,

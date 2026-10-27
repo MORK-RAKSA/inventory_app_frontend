@@ -68,6 +68,7 @@ export function useSounds() {
       ensureMaxVolumeAndSilentOverride();
       player.muted = false;
       player.volume = 1.0;
+      if (player.currentTime === 0) { player.play(); return; }
       player
         .seekTo(0)
         .then(() => {

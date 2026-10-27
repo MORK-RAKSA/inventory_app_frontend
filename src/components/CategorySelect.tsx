@@ -1,5 +1,6 @@
+import { AppText as Text } from './AppText';
 import {useState} from 'react';
-import {KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,Text,View} from 'react-native';
+import {KeyboardAvoidingView,Modal,Platform,Pressable,ScrollView,View} from 'react-native';
 import Animated,{Easing,FadeIn,FadeOut,SlideInDown,SlideOutDown} from 'react-native-reanimated';
 import {Check,ChevronDown,Plus,Search} from 'lucide-react-native';
 import {Field,Btn,C,R} from '../ui';

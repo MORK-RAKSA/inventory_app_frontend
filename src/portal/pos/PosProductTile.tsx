@@ -1,4 +1,6 @@
-import { Text, View } from 'react-native';
+import { isProductExpired } from '../../productExpiry';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Product } from '../../api';
 import { khr, money } from '../../theme';
 import { Press } from '../../motion';
@@ -17,7 +19,8 @@ export function PosProductTile({
   isCompact: boolean;
   onAdd: (product: Product, delta: number) => void;
 }) {
-  const outOfStock = p.stock <= 0;
+  const expired = isProductExpired(p);
+  const outOfStock = p.stock <= 0 || expired;
 
   return (
     <Press
@@ -35,7 +38,7 @@ export function PosProductTile({
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Text style={{ color: P.muted, fontSize: 11, fontWeight: '700' }}>{p.category}</Text>
+        <Text style={{ color: P.muted, fontSize: 11, fontWeight: '700' }}>{expired ? 'ផុតកំណត់ · Expired' : p.category}</Text>
         {quantityInCart > 0 && (
           <View
             style={{

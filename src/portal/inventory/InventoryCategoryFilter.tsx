@@ -1,4 +1,5 @@
-import { ScrollView, Text } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { ScrollView} from 'react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';
 

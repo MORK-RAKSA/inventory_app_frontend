@@ -1,4 +1,5 @@
-import { Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
+import { Platform, ScrollView, View } from 'react-native';
 import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react-native';
 import { Product } from '../../api';
 import { khr, money } from '../../theme';

@@ -1,6 +1,6 @@
+import { AppText as Text } from '../../src/components/AppText';
 import {useCallback,useEffect,useState} from 'react';
-import {Text,View,ActivityIndicator} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {View,ActivityIndicator} from 'react-native';
 import Animated,{FadeIn,FadeOut} from 'react-native-reanimated';
 import {useFocusEffect} from 'expo-router';
 import {ArrowLeftRight,ShieldCheck,Globe2,Info,CheckCircle2,ScanLine,Radio,Smartphone,User,LogOut,Sparkles,SlidersHorizontal,RefreshCw} from 'lucide-react-native';
@@ -16,7 +16,7 @@ import {fetchUsdKhrRate,ExchangeRateQuote,describeRateSource,loadLastRateQuote} 
 
 export default function SettingsPage() {
   const {language,setLanguage,t,tr} = useLanguage();
-  const [rate,setRate] = useState('4100');
+  const [rate,setRate] = useState('');
   const [rateQuote,setRateQuote] = useState<ExchangeRateQuote | null>(null);
   const [currencyMode, setCurrencyMode] = useState<'live' | 'manual'>('manual');
   const [syncingLive, setSyncingLive] = useState(false);
@@ -26,10 +26,7 @@ export default function SettingsPage() {
   const [scannerGunOpen, setScannerGunOpen] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    void api<Settings>('/settings').then(v => setRate(String(v.usdToKhr))).catch(e => setErr(String(e)));
-    AsyncStorage.getItem('retailflow_currency_mode').then((saved) => {
-      if (saved === 'live' || saved === 'manual') setCurrencyMode(saved as 'live' | 'manual');
-    }).catch(() => {});
+    void api<Settings>('/settings').then(v => { setRate(String(v.usdToKhr)); if (v.currencyMode) setCurrencyMode(v.currencyMode); }).catch(e => setErr(String(e)));
     // Keep the last known source visible even before the next sync finishes.
     void loadLastRateQuote().then((q) => { if (q) setRateQuote(q); });
   }, []));
@@ -63,8 +60,10 @@ export default function SettingsPage() {
   }
 
   async function switchMode(m: 'live' | 'manual') {
-    setCurrencyMode(m);
-    await AsyncStorage.setItem('retailflow_currency_mode', m).catch(() => {});
+    try {
+      await api('/settings', {method: 'PUT', body: JSON.stringify({currencyMode: m})});
+      setCurrencyMode(m);
+    } catch (error) { setErr(String(error)); return; }
     if (m === 'live') {
       void fetchLiveRate();
     }

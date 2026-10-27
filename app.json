@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "គ្រប់ហាង, EasySell",
+    "name": "\u1782\u17d2\u179a\u1794\u17cb\u17a0\u17b6\u1784, EasySell",
     "slug": "easysell",
     "scheme": "easysell",
     "version": "1.0.0",
@@ -11,17 +11,19 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow គ្រប់ហាង, EasySell to access your camera to scan product barcodes."
+          "cameraPermission": "Allow \u1782\u17d2\u179a\u1794\u17cb\u17a0\u17b6\u1784, EasySell to access your camera to scan product barcodes."
         }
       ],
       "expo-secure-store",
-      "expo-audio"
+      "expo-audio",
+      "expo-font",
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.easysell.mobile",
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow គ្រប់ហាង, EasySell to access your camera to scan product barcodes.",
+        "NSCameraUsageDescription": "Allow \u1782\u17d2\u179a\u1794\u17cb\u17a0\u17b6\u1784, EasySell to access your camera to scan product barcodes.",
         "UIBackgroundModes": [
           "audio"
         ],
@@ -47,6 +49,13 @@
       "eas": {
         "projectId": "59a96f8b-393e-4eae-8d18-ef2d81ed30da"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/59a96f8b-393e-4eae-8d18-ef2d81ed30da",
+      "checkAutomatically": "NEVER"
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
     }
   }
 }

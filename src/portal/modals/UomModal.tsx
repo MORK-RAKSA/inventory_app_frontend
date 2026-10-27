@@ -1,4 +1,6 @@
-import { Modal, Platform, Text, TextInput, View } from 'react-native';
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
+import { DropdownPicker } from '../../components/DropdownPicker';
+import { Modal, Platform, View } from 'react-native';
 import { X } from 'lucide-react-native';
 import { Press } from '../../motion';
 import { P } from '../theme';
@@ -163,58 +165,9 @@ export function UomModal({ portal }: { portal: PortalController }) {
                 <Text style={{ color: P.textSub, fontSize: 11.5, fontWeight: '700', marginBottom: 4 }}>
                   {tr('MASTER PACKAGING', 'ឯកតាដុំធំ')}
                 </Text>
-                {Platform.OS === 'web' ? (
-                  <View
-                    style={{
-                      borderWidth: 1,
-                      borderColor: P.borderStrong,
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      backgroundColor: P.surfaceAlt,
-                      height: 40,
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <select
-                      value={uomFormCaseUnitName || 'Case'}
-                      onChange={(e: any) => setUomFormCaseUnitName(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        outline: 'none',
-                        color: P.text,
-                        padding: '0 10px',
-                        fontSize: 13,
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {packagingOptions.map((p) => (
-                        <option key={p} value={p} style={{ background: P.surface, color: P.text }}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </View>
-                ) : (
-                  <TextInput
-                    value={uomFormCaseUnitName}
-                    onChangeText={setUomFormCaseUnitName}
-                    placeholder="Case / Carton / Pack / Box"
-                    placeholderTextColor="#9CA3AF"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: P.borderStrong,
-                      borderRadius: 8,
-                      paddingHorizontal: 12,
-                      height: 40,
-                      color: P.text,
-                      backgroundColor: P.surfaceAlt,
-                    }}
-                  />
-                )}
+                <DropdownPicker value={uomFormCaseUnitName} options={packagingOptions as string[]}
+                  onChange={setUomFormCaseUnitName} allowCustom
+                  placeholder={tr('Select or add packaging', 'ជ្រើសរើស ឬបន្ថែមឯកតាដុំធំ')} />
               </View>
             </View>
 

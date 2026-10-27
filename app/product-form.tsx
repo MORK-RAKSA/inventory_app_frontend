@@ -1,7 +1,8 @@
+import { isLocalImage, uploadProductImage } from '../src/productImageUpload';
+import { AppText as Text } from '../src/components/AppText';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ScrollView,
-  Text,
   View,
   Alert,
   Platform,
@@ -9,7 +10,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -64,38 +64,10 @@ export default function ProductFormScreen() {
   const [configuredCategories, setConfiguredCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load from DB first
-    void api<Settings>('/settings')
-      .then((cfg) => {
-        if (Array.isArray(cfg?.baseUnits)) {
-          setConfiguredBaseUnits(cfg.baseUnits);
-          void AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(cfg.baseUnits));
-        }
-        if (Array.isArray(cfg?.categories)) {
-          setConfiguredCategories(cfg.categories);
-          void AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(cfg.categories));
-        }
-      })
-      .catch(() => {
-        // Fallback to offline cache
-        Promise.all([
-          AsyncStorage.getItem('retailflow_configured_base_units'),
-          AsyncStorage.getItem('retailflow_configured_categories'),
-        ]).then(([savedUnits, savedCats]) => {
-          if (savedUnits) {
-            try {
-              const parsed = JSON.parse(savedUnits);
-              if (Array.isArray(parsed)) setConfiguredBaseUnits(parsed);
-            } catch (_) {}
-          }
-          if (savedCats) {
-            try {
-              const parsed = JSON.parse(savedCats);
-              if (Array.isArray(parsed)) setConfiguredCategories(parsed);
-            } catch (_) {}
-          }
-        });
-      });
+    void api<Settings>('/settings').then(cfg => {
+      setConfiguredBaseUnits(cfg.baseUnits || []);
+      setConfiguredCategories(cfg.categories || []);
+    }).catch(error => toast.show(error.message || 'Could not load settings', { tone: 'error' }));
   }, []);
 
   const categories = useMemo(() => {
@@ -115,7 +87,7 @@ export default function ProductFormScreen() {
   const [category, setCategory] = useState('');
   const [currency, setCurrency] = useState<'KHR' | 'USD'>('KHR');
   const [price, setPrice] = useState('');
-  const [stock, setStock] = useState('10');
+  const [stock, setStock] = useState('0');
   const [threshold, setThreshold] = useState('5');
   const [expiry, setExpiry] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
@@ -127,7 +99,7 @@ export default function ProductFormScreen() {
   const [wholesaleMinQty, setWholesaleMinQty] = useState('1');
   const [baseUnit, setBaseUnit] = useState('');
   const [caseUnitName, setCaseUnitName] = useState('');
-  const [caseQty, setCaseQty] = useState('24');
+  const [caseQty, setCaseQty] = useState('');
   const [uomTemplates, setUomTemplates] = useState<UomConfig[]>([]);
 
   const availableBaseUnits = useMemo(() => {
@@ -201,7 +173,7 @@ export default function ProductFormScreen() {
         setWholesaleEnabled(hasWholesale);
         setBaseUnit(existing.baseUnit || 'Piece');
         setCaseUnitName(existing.caseUnitName || 'Case');
-        setCaseQty(String(existing.caseQty || 24));
+        setCaseQty(String(existing.caseQty || 1));
         setWholesaleMinQty(String(existing.wholesaleMinQty || 1));
 
         if (existing.originalCcy === 'USD') {
@@ -278,6 +250,7 @@ export default function ProductFormScreen() {
   };
 
   // Image Selection
+  const [savedDraftId, setSavedDraftId] = useState<string | null>(null);
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -311,6 +284,8 @@ export default function ProductFormScreen() {
 
   // Save product
   const handleSave = async () => {
+    if (!(rate > 0)) { toast.show('Load store settings before saving', { tone: 'error' }); return; }
+    if (!category.trim()) { toast.show('Choose or enter a category', { tone: 'error' }); return; }
     if (!name.trim()) {
       toast.show(tr('Please enter product name', 'សូមបញ្ចូលឈ្មោះទំនិញ'), {
         tone: 'error',
@@ -350,7 +325,7 @@ export default function ProductFormScreen() {
       const payload = {
         name: name.trim(),
         barcode: barcode.trim() || null,
-        category: category.trim() || 'General',
+        category: category.trim(),
         price: currency === 'KHR' ? roundKhr(rawPrice) : rawPrice,
         currency,
         priceCurrency: currency,
@@ -360,7 +335,7 @@ export default function ProductFormScreen() {
         stock: Math.max(0, parseInt(stock, 10) || 0),
         lowStockThreshold: Math.max(0, parseInt(threshold, 10) || 5),
         expirationDate: expiry || null,
-        imageUrl: photo || null,
+        ...(isLocalImage(photo) ? {} : {imageUrl: photo || null}),
         wholesalePrice:
           wholesaleUsdVal !== null
             ? (currency === 'KHR'
@@ -382,8 +357,8 @@ export default function ProductFormScreen() {
       };
 
       let savedProduct: Product;
-      if (isEditing && params.id) {
-        savedProduct = await api<Product>(`/products/${params.id}`, {
+      if ((isEditing && params.id) || savedDraftId) {
+        savedProduct = await api<Product>(`/products/${savedDraftId || params.id}`, {
           method: 'PUT',
           body: JSON.stringify(payload),
         });
@@ -394,8 +369,10 @@ export default function ProductFormScreen() {
         });
       }
 
-      if (photo && savedProduct.id) {
-        await storeProductImage(savedProduct.id, photo);
+      setSavedDraftId(savedProduct.id);
+      if (isLocalImage(photo)) {
+        savedProduct = await uploadProductImage(savedProduct.id, photo!);
+        setPhoto(savedProduct.imageUrl || null);
       }
 
       refresh();

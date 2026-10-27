@@ -1,4 +1,5 @@
-import { ScrollView, Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { ScrollView, View } from 'react-native';
 import { ChevronRight, LogOut, Smartphone, Usb } from 'lucide-react-native';
 import { khr } from '../../theme';
 import { logout } from '../../auth';
@@ -36,14 +37,18 @@ export function PortalSidebar({ portal }: { portal: PortalController }) {
     .join('') || 'A';
 
   return (
-    <View
-      style={{
+    <ScrollView
+      style={{ flexGrow: 0, flexShrink: 0, height: isCompact ? undefined : '100%', backgroundColor: P.sidebarBg, width: isCompact ? '100%' : 258, maxHeight: isCompact ? 230 : '100%' }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        minHeight: isCompact ? undefined : '100%',
         width: isCompact ? '100%' : 258,
         backgroundColor: P.sidebarBg,
         borderRightWidth: isCompact ? 0 : 1,
         borderBottomWidth: isCompact ? 1 : 0,
         borderColor: P.sidebarBorder,
-        paddingVertical: isCompact ? 14 : 22,
+        paddingTop: isCompact ? 14 : 22,
+        paddingBottom: 28,
         paddingHorizontal: 16,
         justifyContent: 'space-between',
       }}
@@ -178,7 +183,7 @@ export function PortalSidebar({ portal }: { portal: PortalController }) {
       </View>
 
       {/* Bottom controls (desktop) */}
-      {!isCompact && (
+      {(
         <View style={{ gap: 10, marginTop: 16 }}>
           {/* Live KHR rate */}
           <View style={{ ...glassInset, padding: 12 }}>
@@ -290,6 +295,6 @@ export function PortalSidebar({ portal }: { portal: PortalController }) {
           </Press>
         </View>
       )}
-    </View>
+    </ScrollView>
   );
 }

@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import {
   Banknote,
   Check,
@@ -15,14 +16,14 @@ import { P } from '../theme';
 import type { PortalController } from '../usePortalController';
 import { RetailCartTable } from './RetailCartTable';
 import { WholesaleCartTable } from './WholesaleCartTable';
-import { CashTenderModal } from '../../components/CashTenderModal';
+import { PayWaySandbox } from './PayWaySandbox';
 import { calculateCambodiaCashExchange, CambodiaCashExchange } from '../../exchangeRate';
 
 export function PosCartColumn({ portal }: { portal: PortalController }) {
-  const [showTenderModal, setShowTenderModal] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qr'>('cash');
   const [tenderInput, setTenderInput] = useState('');
   const [tenderCurrency, setTenderCurrency] = useState<'KHR' | 'USD'>('KHR');
-  const [selectedChangeMode, setSelectedChangeMode] = useState<'split' | 'allKhr'>('split');
 
   const {
     addToCart,
@@ -94,37 +95,29 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
     return list;
   }, [totalUsd]);
 
-  const handleExecuteCheckout = () => {
+  const handleExecuteCheckout = async () => {
     if (lineCount === 0 || checkingOut) return;
-
-    if (hasTender && exchange && isPaidEnough) {
-      void completeCheckout({
-        tenderAmount: numericTender,
-        tenderCurrency,
-        exchange,
-      });
-      setTenderInput('');
-    } else {
-      void completeCheckout();
-      setTenderInput('');
-    }
+    if (paymentMethod !== 'cash' || !hasTender) return;
+    if (!exchange || !isPaidEnough) return;
+    const completed = await completeCheckout({ tenderAmount: numericTender, tenderCurrency, exchange });
+    if (completed) setTenderInput('');
   };
 
   return (
     <View
       style={{
-        flex: 1.35,
+        flexGrow: 1,
         width: '100%',
         backgroundColor: P.surface,
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
         borderColor: P.border,
-        ...(Platform.OS === 'web' && !isCompact
+        ...(Platform.OS === 'web'
           ? {
               position: 'sticky' as any,
               top: 20,
-              maxHeight: 'calc(100vh - 40px)' as any,
+
               display: 'flex' as any,
               flexDirection: 'column',
             }
@@ -196,61 +189,22 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
           )}
         </View>
 
-        {/* Currency Switcher & Rate Badge */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: P.surfaceAlt,
-            padding: 3,
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: P.border,
-          }}
-        >
-          <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
-            {(['KHR', 'USD'] as const).map((ccy) => {
-              const active = paidCurrency === ccy;
-              return (
-                <Press
-                  key={ccy}
-                  onPress={() => {
-                    setPaidCurrency(ccy);
-                    setTenderCurrency(ccy);
-                  }}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    backgroundColor: active ? P.primary : 'transparent',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '800',
-                      color: active ? '#FFFFFF' : P.textSub,
-                    }}
-                  >
-                    {ccy === 'KHR' ? '៛ Pay in KHR' : '$ Pay in USD'}
-                  </Text>
-                </Press>
-              );
-            })}
-          </View>
-          <View style={{ paddingHorizontal: 10 }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: P.muted }}>
-              1$ = {khr(rate)}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {(['cash', 'qr'] as const).map(method => <Press key={method}
+            onPress={() => { setPaymentMethod(method); if (method === 'qr' && lineCount > 0) setQrOpen(true); }}
+            style={{ flex: 1, padding: 12, borderRadius: 10, borderWidth: 1,
+              borderColor: paymentMethod === method ? '#47645A' : P.border,
+              backgroundColor: paymentMethod === method ? '#E6EEEA' : P.surface }}>
+            <Text style={{ color: '#355547', fontWeight: '700', textAlign: 'center' }}>
+              {method === 'cash' ? tr('Pay cash', 'បង់សាច់ប្រាក់') : tr('Scan QR · Sandbox', 'ស្កេន QR · សាកល្បង')}
             </Text>
-          </View>
+          </Press>)}
         </View>
 
         {/* Grand Total Due Card (Fixed at Top) */}
         <View
           style={{
-            backgroundColor: P.deep,
+            backgroundColor: '#F1F5F4',
             borderRadius: 14,
             paddingVertical: 12,
             paddingHorizontal: 16,
@@ -262,7 +216,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
           <View>
             <Text
               style={{
-                color: '#C9BFF6',
+                color: P.muted,
                 fontSize: 10.5,
                 fontWeight: '800',
                 letterSpacing: 0.5,
@@ -272,7 +226,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
             </Text>
             <Text
               style={{
-                color: '#FFFFFF',
+                color: P.text,
                 fontSize: 26,
                 fontWeight: '900',
                 letterSpacing: -0.6,
@@ -284,7 +238,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
           </View>
 
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: '#9CE7C4', fontSize: 16, fontWeight: '800' }}>
+            <Text style={{ color: '#31594B', fontSize: 16, fontWeight: '800' }}>
               {money(totalUsd)} USD
             </Text>
             {isWholesale && wholesaleTotalSavingsUsd > 0 && (
@@ -297,7 +251,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
                   marginTop: 3,
                 }}
               >
-                <Text style={{ color: '#9CE7C4', fontSize: 10.5, fontWeight: '800' }}>
+                <Text style={{ color: '#31594B', fontSize: 10.5, fontWeight: '800' }}>
                   {tr('Save', 'សន្សំ')} {khr(wholesaleTotalSavingsKhr)}
                 </Text>
               </View>
@@ -305,8 +259,8 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
           </View>
         </View>
 
-        {/* Customer Paid Input & Real-Time Exchange Calculator */}
-        <View
+        {/* One cash currency selector and tender entry. */}
+        {paymentMethod === 'cash' ? <View
           style={{
             backgroundColor: P.surfaceAlt,
             borderRadius: 12,
@@ -320,14 +274,14 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Banknote size={15} color={P.primary} />
               <Text style={{ color: P.text, fontSize: 12, fontWeight: '800' }}>
-                {tr('Customer Paid (Optional)', 'ប្រាក់អតិថិជនឲ្យ (គិតលុយអាប់)')}
+                {tr('Cash received', 'ប្រាក់អតិថិជនឲ្យ (គិតលុយអាប់)')}
               </Text>
             </View>
 
             {/* Currency toggle for payment */}
             <View style={{ flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 6, padding: 1.5 }}>
               <Press
-                onPress={() => setTenderCurrency('KHR')}
+                onPress={() => { setTenderCurrency('KHR'); setTenderInput(''); }}
                 style={{
                   paddingHorizontal: 8,
                   paddingVertical: 2.5,
@@ -346,7 +300,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
                 </Text>
               </Press>
               <Press
-                onPress={() => setTenderCurrency('USD')}
+                onPress={() => { setTenderCurrency('USD'); setTenderInput(''); }}
                 style={{
                   paddingHorizontal: 8,
                   paddingVertical: 2.5,
@@ -411,34 +365,6 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
             )}
           </View>
 
-          {/* Quick preset amount pills */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {(tenderCurrency === 'KHR' ? quickKhrPresets : quickUsdPresets).map((val) => (
-              <Press
-                key={val}
-                onPress={() => setTenderInput(String(val))}
-                style={{
-                  backgroundColor: numericTender === val ? P.primaryLight : '#FFFFFF',
-                  borderWidth: 1,
-                  borderColor: numericTender === val ? P.primary : P.border,
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 6,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: '800',
-                    color: numericTender === val ? P.primary : P.textSub,
-                  }}
-                >
-                  {tenderCurrency === 'KHR' ? khr(val) : `$${val}`}
-                </Text>
-              </Press>
-            ))}
-          </View>
-
           {/* Real-time Change / Shortfall Feedback */}
           {hasTender && exchange && (
             <View
@@ -462,56 +388,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
                     </Text>
                   </View>
 
-                  {/* Cambodia Exchange Breakdown Options */}
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 2 }}>
-                    <Press
-                      onPress={() => setSelectedChangeMode('split')}
-                      style={{
-                        flex: 1,
-                        backgroundColor: selectedChangeMode === 'split' ? '#047857' : '#FFFFFF',
-                        paddingVertical: 4,
-                        paddingHorizontal: 6,
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: selectedChangeMode === 'split' ? '#047857' : '#A7F3D0',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: '800',
-                          color: selectedChangeMode === 'split' ? '#FFFFFF' : '#065F46',
-                        }}
-                      >
-                        Option 1: {exchange.formattedSplit}
-                      </Text>
-                    </Press>
 
-                    <Press
-                      onPress={() => setSelectedChangeMode('allKhr')}
-                      style={{
-                        flex: 1,
-                        backgroundColor: selectedChangeMode === 'allKhr' ? '#047857' : '#FFFFFF',
-                        paddingVertical: 4,
-                        paddingHorizontal: 6,
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: selectedChangeMode === 'allKhr' ? '#047857' : '#A7F3D0',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: '800',
-                          color: selectedChangeMode === 'allKhr' ? '#FFFFFF' : '#065F46',
-                        }}
-                      >
-                        Option 2: {exchange.formattedAllKhr}
-                      </Text>
-                    </Press>
-                  </View>
                 </>
               ) : (
                 <Text style={{ color: '#E11D48', fontSize: 11.5, fontWeight: '800' }}>
@@ -520,44 +397,8 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
               )}
             </View>
           )}
-        </View>
-
-        {/* Primary Checkout Button (Fixed at Top) */}
-        <Press
-          disabled={lineCount === 0 || checkingOut || (hasTender && !isPaidEnough)}
-          onPress={handleExecuteCheckout}
-          style={{
-            height: 48,
-            borderRadius: 12,
-            backgroundColor:
-              lineCount > 0 && (!hasTender || isPaidEnough) ? P.primary : P.borderStrong,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'row',
-            gap: 8,
-            shadowColor: P.primary,
-            shadowOpacity: lineCount > 0 ? 0.25 : 0,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 3 },
-          }}
-        >
-          {checkingOut ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <>
-              <Check size={18} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontSize: 14.5, fontWeight: '800' }}>
-                {hasTender && exchange && isPaidEnough
-                  ? isWholesale
-                    ? `${tr('Pay & Change', 'ទូទាត់លក់ដុំ & អាប់')} ${selectedChangeMode === 'split' ? exchange.formattedSplit : exchange.formattedAllKhr}`
-                    : `${tr('Pay & Change', 'ទូទាត់ & អាប់')} ${selectedChangeMode === 'split' ? exchange.formattedSplit : exchange.formattedAllKhr}`
-                  : isWholesale
-                  ? tr('Complete Wholesale Checkout', 'បញ្ចប់ការលក់ដុំ & ចេញវិក្កយបត្រ')
-                  : tr('Complete Retail Checkout', 'បញ្ចប់ការលក់រាយ & ចេញវិក្កយបត្រ')}
-              </Text>
-            </>
-          )}
-        </Press>
+        </View> : portal.userRole === 'ADMIN' ? <PayWaySandbox key={totalUsd.toFixed(2)} amount={totalUsd} visible={qrOpen} onClose={() => setQrOpen(false)} /> :
+          <Text style={{ color: P.muted }}>{tr('QR sandbox testing requires an administrator.', 'ការសាកល្បង QR ត្រូវការអ្នកគ្រប់គ្រង។')}</Text>}
       </View>
 
       {/* ────────────────── SCROLLABLE CART ITEMS AREA ────────────────── */}
@@ -593,18 +434,42 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
         )}
       </View>
 
-      <CashTenderModal
-        visible={showTenderModal}
-        totalKhr={totalKhr}
-        totalUsd={totalUsd}
-        rate={rate}
-        busy={checkingOut}
-        onClose={() => setShowTenderModal(false)}
-        onConfirm={(tender) => {
-          setShowTenderModal(false);
-          void completeCheckout(tender);
-        }}
-      />
+        {/* Checkout action after cart */}
+        {paymentMethod === 'cash' && <Press
+          disabled={lineCount === 0 || checkingOut || !hasTender || !isPaidEnough}
+          onPress={() => void handleExecuteCheckout()}
+          style={{
+            height: 48,
+            borderRadius: 12,
+            backgroundColor:
+              lineCount > 0 && hasTender && isPaidEnough ? '#47645A' : P.borderStrong,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 8,
+            shadowColor: P.primary,
+            shadowOpacity: 0,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 3 },
+          }}
+        >
+          {checkingOut ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <>
+              <Check size={18} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontSize: 14.5, fontWeight: '800' }}>
+                {hasTender && exchange && isPaidEnough
+                  ? isWholesale
+                    ? `${tr('Pay & Change', 'ទូទាត់លក់ដុំ & អាប់')} ${exchange.formattedAllKhr}`
+                    : `${tr('Pay & Change', 'ទូទាត់ & អាប់')} ${exchange.formattedAllKhr}`
+                  : isWholesale
+                  ? tr('Complete Wholesale Checkout', 'បញ្ចប់ការលក់ដុំ & ចេញវិក្កយបត្រ')
+                  : tr('Complete Retail Checkout', 'បញ្ចប់ការលក់រាយ & ចេញវិក្កយបត្រ')}
+              </Text>
+            </>
+          )}
+        </Press>}
     </View>
   );
 }

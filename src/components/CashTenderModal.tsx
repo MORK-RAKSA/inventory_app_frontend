@@ -1,3 +1,4 @@
+import { AppTextInput as TextInput, AppText as Text } from './AppText';
 import React, { useMemo, useState } from 'react';
 import {
   Modal,
@@ -5,8 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import {
@@ -187,49 +186,10 @@ export function CashTenderModal({
               </View>
             </View>
 
-            {/* Quick Cash Chips */}
-            <View style={{ marginTop: 12 }}>
-              <Text style={styles.sectionLabel}>
-                {tr('Quick Money Given', 'ជម្រើសលុយរហ័ស')}
-              </Text>
-              <View style={styles.chipRow}>
-                {quickChips.map((chipVal) => {
-                  const label =
-                    tenderCurrency === 'KHR'
-                      ? khr(chipVal)
-                      : `$${chipVal.toFixed(2).replace(/\.00$/, '')}`;
-                  const isExact =
-                    tenderCurrency === 'KHR'
-                      ? Math.abs(chipVal - totalKhr) < 50
-                      : Math.abs(chipVal - totalUsd) < 0.01;
-
-                  return (
-                    <Press
-                      key={chipVal}
-                      onPress={() => setAmountStr(String(chipVal))}
-                      style={[
-                        styles.chipBtn,
-                        parsedAmount === chipVal && styles.chipBtnActive,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipBtnText,
-                          parsedAmount === chipVal && styles.chipBtnTextActive,
-                        ]}
-                      >
-                        {label} {isExact ? `(${tr('Exact', 'គត់')})` : ''}
-                      </Text>
-                    </Press>
-                  );
-                })}
-              </View>
-            </View>
-
             {/* Manual Cash Input Box */}
             <View style={{ marginTop: 14 }}>
               <Text style={styles.sectionLabel}>
-                {tr('Or Enter Exact Cash Received', 'ឬបញ្ចូលចំនួនប្រាក់ជាក់ស្តែង')}
+                {tr('Cash received', 'បញ្ចូលចំនួនប្រាក់ជាក់ស្តែង')}
               </Text>
               <View style={styles.inputContainer}>
                 <Text style={styles.inputPrefix}>
@@ -296,35 +256,10 @@ export function CashTenderModal({
                       </View>
                     </View>
 
-                    {/* Option 1: Split USD + KHR (Standard in Cambodia, avoids non-existent cents) */}
-                    <View style={styles.optionCardPrimary}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={styles.optionCardTag}>
-                          {tr('OPTION 1: SPLIT (RECOMMENDED)', 'ជម្រើសទី ១៖ អាប់ដុល្លារ + ប្រាក់រៀល (ណែនាំ)')}
-                        </Text>
-                        <Text style={styles.noCentNotice}>
-                          {tr('No USD cent coins', 'គ្មានកាក់សេន')}
-                        </Text>
-                      </View>
-                      <Text style={styles.optionValuePrimary}>
-                        {exchange.formattedSplit}
-                      </Text>
-                      <Text style={styles.optionExplanation}>
-                        {exchange.splitUsd > 0 && exchange.splitKhr > 0
-                          ? tr(
-                              `Give $${exchange.splitUsd} dollar bill(s) + ${khr(exchange.splitKhr)} in riel notes`,
-                              `ជូនក្រដាស $${exchange.splitUsd} + ក្រដាសប្រាក់ ${khr(exchange.splitKhr)}`
-                            )
-                          : exchange.splitUsd > 0
-                          ? tr(`Give $${exchange.splitUsd} dollar bill(s)`, `ជូនក្រដាសប្រាក់ $${exchange.splitUsd}`)
-                          : tr(`Give ${khr(exchange.splitKhr)} in riel notes`, `ជូនក្រដាសប្រាក់ ${khr(exchange.splitKhr)}`)}
-                      </Text>
-                    </View>
-
                     {/* Option 2: 100% Khmer Riel */}
                     <View style={styles.optionCardSecondary}>
                       <Text style={styles.optionCardTagSecondary}>
-                        {tr('OPTION 2: ALL KHR', 'ជម្រើសទី ២៖ អាប់ជាប្រាក់រៀលសុទ្ធ')}
+                        {tr('Change', 'ប្រាក់អាប់')}
                       </Text>
                       <Text style={styles.optionValueSecondary}>
                         {exchange.formattedAllKhr}

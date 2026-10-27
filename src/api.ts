@@ -50,6 +50,7 @@ export interface AppUser {
 }
 
 export interface Sale {
+  cashierName?: string;
   id: string;
   createdAt: string;
   rateSnapshot: number;
@@ -83,6 +84,7 @@ export interface Sale {
 }
 
 export interface Settings {
+  currencyMode?: 'live' | 'manual';
   usdToKhr: number;
   categories?: string[];
   baseUnits?: string[];

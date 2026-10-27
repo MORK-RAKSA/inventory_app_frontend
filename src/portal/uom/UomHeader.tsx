@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Layers, Plus } from 'lucide-react-native';
 import { Product } from '../../api';
 import { Press } from '../../motion';

@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from '../../src/components/AppText';
 import {useState} from 'react';
-import {Text,View,ScrollView,TextInput} from 'react-native';
+import {View,ScrollView} from 'react-native';
 import Animated,{FadeIn,FadeOut} from 'react-native-reanimated';
 import {ReceiptText,CalendarDays,ChevronRight,Download,Search} from 'lucide-react-native';
 import {Sale} from '../../src/api';

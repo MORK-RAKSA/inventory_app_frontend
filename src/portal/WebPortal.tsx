@@ -1,5 +1,6 @@
+import { AppText as Text } from '../components/AppText';
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, View } from 'react-native';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { DashboardTab } from './dashboard/DashboardTab';
 import { BatchIntakePage } from './inventory/BatchIntakePage';
@@ -48,7 +49,7 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: P.canvas }}>
+    <View style={{ flex: 1, minHeight: 0, height: Platform.OS === 'web' ? '100dvh' as any : undefined, backgroundColor: P.canvas }}>
       <Aurora />
 
       <View style={{ flex: 1, padding: isCompact ? 0 : 16 }}>
@@ -66,7 +67,7 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
         >
           <PortalSidebar portal={portal} />
 
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
             <PortalHeader portal={portal} />
 
             {loading ? (

@@ -1,5 +1,6 @@
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
 import { useState } from 'react';
-import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { KeyRound, Shield, Trash2, User, UserPlus, Usb, Check, RefreshCw, Tag, Package, Plus, X, Sparkles, SlidersHorizontal } from 'lucide-react-native';
 import { AppUser } from '../../api';
 import { describeRateSource } from '../../exchangeRate';
@@ -264,28 +265,6 @@ export function SettingsTab({ portal }: { portal: PortalController }) {
               }}
             />
 
-            {/* Quick Presets */}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 16 }}>
-              {[4000, 4100, 4200].map((preset) => (
-                <Press
-                  key={preset}
-                  onPress={() => setRateInput(String(preset))}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                    backgroundColor: Number(rateInput) === preset ? P.primaryLight : P.surfaceAlt,
-                    borderWidth: 1,
-                    borderColor: Number(rateInput) === preset ? P.primary : P.border,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: P.text, fontWeight: '800', fontSize: 13 }}>
-                    {khr(preset)}
-                  </Text>
-                </Press>
-              ))}
-            </View>
 
             <Press
               disabled={savingRate}

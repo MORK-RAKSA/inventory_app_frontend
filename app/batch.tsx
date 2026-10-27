@@ -1,5 +1,6 @@
+import { AppText as Text } from '../src/components/AppText';
 import { useEffect, useState } from "react";
-import { Alert, Platform, Text, View } from "react-native";
+import { Alert, Platform, View } from 'react-native';
 import Animated from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import {
@@ -129,9 +130,9 @@ export default function Batch() {
                 key: newKey,
                 name: "",
                 barcode: code,
-                category: "General",
+                category: "",
                 quantity: qty,
-                priceUsd: Number((4100 / rate).toFixed(4)),
+                priceUsd: 0,
                 lowStockThreshold: 5,
               },
             ],
@@ -181,7 +182,7 @@ export default function Batch() {
       key: `new-${Date.now()}`,
       name: "",
       barcode: "",
-      category: "General",
+      category: "",
       quantity: 1,
       priceUsd: 0,
       lowStockThreshold: 5,
@@ -208,6 +209,7 @@ export default function Batch() {
     setError("");
   }
   async function save() {
+    if (!(rate > 0)) { Alert.alert('Settings unavailable', 'Load store settings before saving'); return; }
     if (!pending.length) return;
     if (draft) {
       setError(

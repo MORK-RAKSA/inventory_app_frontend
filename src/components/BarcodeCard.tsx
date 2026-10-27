@@ -1,4 +1,5 @@
-import {Text,View} from 'react-native';
+import { AppText as Text } from './AppText';
+import {View} from 'react-native';
 import Barcode from '@aramir/react-native-barcode';
 import {RefreshCw} from 'lucide-react-native';
 import {Btn,Card,C} from '../ui';

@@ -1,3 +1,5 @@
+import { isProductExpired } from '../../src/productExpiry';
+import { AppTextInput as TextInput, AppText as Text } from '../../src/components/AppText';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -5,8 +7,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -116,12 +116,12 @@ export default function Checkout() {
   const getTotalUnits = (p: Product, itemQty?: CartItemQty): number => {
     const it = itemQty || cart[p.id];
     if (!it) return 0;
-    const cQty = p.caseQty || 24;
+    const cQty = p.caseQty || 1;
     return Math.max(0, (it.cases || 0) * cQty + (it.loose || 0));
   };
 
   const getCasePriceUsd = (p: Product): number => {
-    const cQty = p.caseQty || 24;
+    const cQty = p.caseQty || 1;
     const uPrice =
       isWholesale && p.wholesalePriceUsd && p.wholesalePriceUsd > 0
         ? Number(p.wholesalePriceUsd)
@@ -134,7 +134,7 @@ export default function Checkout() {
   const getItemPriceUsd = (p: Product, itemQty?: CartItemQty): number => {
     const it = itemQty || cart[p.id];
     if (!it) return 0;
-    const cQty = p.caseQty || 24;
+    const cQty = p.caseQty || 1;
     const uPrice =
       isWholesale && p.wholesalePriceUsd && p.wholesalePriceUsd > 0
         ? Number(p.wholesalePriceUsd)
@@ -199,6 +199,7 @@ export default function Checkout() {
   }, [total]);
 
   const handleExecuteCheckout = () => {
+    if (selected.some(p => isProductExpired(p))) { toast.show('Remove expired products before checkout', { tone: 'error' }); return; }
     if (!units || busy) return;
     if (hasTender && exchange && isPaidEnough) {
       void checkout(false, {
@@ -224,7 +225,8 @@ export default function Checkout() {
     p.stock > 0 && getTotalUnits(p) + unitsToAdd <= p.stock;
 
   function addCase(p: Product, count = 1) {
-    const cQty = p.caseQty || 24;
+    if (count > 0 && isProductExpired(p)) { toast.show('Expired product cannot be sold', { tone: 'error' }); return; }
+    const cQty = p.caseQty || 1;
     if (!canAddUnits(p, count * cQty)) {
       playFail();
       toast.show(
@@ -268,10 +270,11 @@ export default function Checkout() {
   }
 
   function addLoose(p: Product, count = 1) {
+    if (count > 0 && isProductExpired(p)) { toast.show('Expired product cannot be sold', { tone: 'error' }); return; }
     if (!canAddUnits(p, count)) {
       playFail();
       toast.show(
-        tr(`${p.name} is out of stock`, `${p.name} អស់ពីស្តុកហើយ`),
+        tr(`${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} is out of stock`, `${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} អស់ពីស្តុកហើយ`),
         { tone: 'error' }
       );
       return;
@@ -308,8 +311,9 @@ export default function Checkout() {
   }
 
   function add(p: Product, count = 1) {
+    if (count > 0 && isProductExpired(p)) { toast.show('Expired product cannot be sold', { tone: 'error' }); return; }
     if (isWholesale) {
-      if ((p.caseQty || 24) > 1 && (cart[p.id]?.cases || 0) === 0 && (cart[p.id]?.loose || 0) === 0) {
+      if ((p.caseQty || 1) > 1 && (cart[p.id]?.cases || 0) === 0 && (cart[p.id]?.loose || 0) === 0) {
         addCase(p, 1);
       } else {
         addLoose(p, count);
@@ -351,7 +355,7 @@ export default function Checkout() {
   }
 
   function setDirectCases(p: Product, targetCases: number) {
-    const cQty = p.caseQty || 24;
+    const cQty = p.caseQty || 1;
     const cur = cart[p.id] || { cases: 0, loose: 0 };
     const safeCases = Math.max(0, targetCases);
     const totalUnits = safeCases * cQty + cur.loose;
@@ -370,7 +374,7 @@ export default function Checkout() {
   }
 
   function setDirectLoose(p: Product, targetLoose: number) {
-    const cQty = p.caseQty || 24;
+    const cQty = p.caseQty || 1;
     const cur = cart[p.id] || { cases: 0, loose: 0 };
     const safeLoose = Math.max(0, targetLoose);
     const totalUnits = cur.cases * cQty + safeLoose;
@@ -400,13 +404,13 @@ export default function Checkout() {
       setError(msg);
       return { ok: false, message: msg };
     }
-    const unitsNeeded = isWholesale ? (p.caseQty || 24) * qty : qty;
+    const unitsNeeded = isWholesale ? (p.caseQty || 1) * qty : qty;
     if (!canAddUnits(p, unitsNeeded)) {
       playFail();
       const left = p.stock - getTotalUnits(p);
       const msg = tr(
-        `Out of stock: ${p.name} (${Math.max(0, left)} left)`,
-        `អស់ពីស្តុក៖ ${p.name} (សល់ ${Math.max(0, left)})`
+        `Out of stock: ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} (${Math.max(0, left)} left)`,
+        `អស់ពីស្តុក៖ ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} (សល់ ${Math.max(0, left)})`
       );
       setError(msg);
       return { ok: false, message: msg };
@@ -422,7 +426,7 @@ export default function Checkout() {
     const currentPrice = getItemPriceUsd(p);
     return {
       ok: true,
-      label: `${p.name} (+${isWholesale ? `${qty} ${p.caseUnitName || 'Case'}` : qty}) · ${khr(currentPrice * rate)}`,
+      label: `${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} (+${isWholesale ? `${qty} ${p.caseUnitName || 'Case'}` : qty}) · ${khr(currentPrice * rate)}`,
     };
   }
 
@@ -431,6 +435,8 @@ export default function Checkout() {
     tenderCurrency: 'USD' | 'KHR';
     exchange: CambodiaCashExchange;
   }) {
+    if (!(rate > 0)) { toast.show('Load store settings before checkout', { tone: 'error' }); return; }
+    if (selected.some(p => isProductExpired(p))) { toast.show('Remove expired products before checkout', { tone: 'error' }); return; }
     if (!units || busy) return;
     setBusy(true);
     setError('');
@@ -443,7 +449,7 @@ export default function Checkout() {
           priceTier: tier,
           tenderAmount: tenderInfo?.tenderAmount,
           tenderCurrency: tenderInfo?.tenderCurrency,
-          changeText: tenderInfo?.exchange.formattedSplit,
+          changeText: tenderInfo?.exchange.formattedAllKhr,
           changeKhr: tenderInfo?.exchange.changeKhr,
           changeUsd: tenderInfo?.exchange.changeUsd,
           items: selected.map((p) => {
@@ -476,7 +482,7 @@ export default function Checkout() {
         paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
         tenderAmount: tenderInfo?.tenderAmount,
         tenderCurrency: tenderInfo?.tenderCurrency || paidCurrency,
-        changeText: tenderInfo?.exchange.formattedSplit,
+        changeText: tenderInfo?.exchange.formattedAllKhr,
         changeSplit: tenderInfo?.exchange.formattedSplit,
         changeAllKhr: tenderInfo?.exchange.formattedAllKhr,
       };
@@ -559,7 +565,7 @@ export default function Checkout() {
   );
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.bg, paddingTop: 10 }}>
       {/* Sticky Top Header & Search Bar for Effortless Item Finding */}
       <View style={styles.topStickyContainer}>
         {/* Row 1: Back, Title, Mode Pill, Camera Scan, Receipt */}
@@ -669,248 +675,6 @@ export default function Checkout() {
         )}
       </View>
 
-      {/* ────────────────── FIXED TOP CHECKOUT SUMMARY & TENDER ────────────────── */}
-      {units > 0 && (
-        <Animated.View
-          entering={FadeIn.duration(200)}
-          style={{
-            marginHorizontal: 16,
-            marginTop: 6,
-            marginBottom: 6,
-            backgroundColor: '#0F172A',
-            borderRadius: 16,
-            padding: 12,
-            gap: 8,
-            ...shadow.md,
-          }}
-        >
-          {/* Top Row: Total & Currency Switcher */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View>
-              <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
-                {tr('TOTAL DUE', 'សរុបត្រូវបង់')} · {isWholesale ? tr('Wholesale', 'លក់ដុំ') : tr('Retail', 'លក់រាយ')}
-              </Text>
-              <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', marginTop: 1 }}>
-                {khr(total * rate)}
-              </Text>
-              <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '700' }}>
-                {money(total)} USD
-              </Text>
-            </View>
-
-            {/* Currency Pill Switcher */}
-            <View style={{ flexDirection: 'row', backgroundColor: '#1E293B', borderRadius: 8, padding: 2 }}>
-              <Press
-                onPress={() => {
-                  setPaidCurrency('KHR');
-                  setTenderCurrency('KHR');
-                }}
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 5,
-                  borderRadius: 6,
-                  backgroundColor: paidCurrency === 'KHR' ? C.primary : 'transparent',
-                }}
-              >
-                <Text style={{ color: paidCurrency === 'KHR' ? '#FFFFFF' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
-                  ៛ KHR
-                </Text>
-              </Press>
-              <Press
-                onPress={() => {
-                  setPaidCurrency('USD');
-                  setTenderCurrency('USD');
-                }}
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 5,
-                  borderRadius: 6,
-                  backgroundColor: paidCurrency === 'USD' ? C.primary : 'transparent',
-                }}
-              >
-                <Text style={{ color: paidCurrency === 'USD' ? '#FFFFFF' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
-                  $ USD
-                </Text>
-              </Press>
-            </View>
-          </View>
-
-          {/* Customer Paid Input (៛ KHR or $ USD) */}
-          <View
-            style={{
-              backgroundColor: '#1E293B',
-              borderRadius: 10,
-              padding: 8,
-              gap: 6,
-            }}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ color: '#E2E8F0', fontSize: 11, fontWeight: '700' }}>
-                {tr('Customer Paid (Optional)', 'ប្រាក់អតិថិជនឲ្យ (គិតលុយអាប់)')}
-              </Text>
-              {hasTender ? (
-                <Press onPress={() => setTenderInput('')}>
-                  <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '700' }}>✕ {tr('Clear', 'សម្អាត')}</Text>
-                </Press>
-              ) : null}
-            </View>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#0F172A',
-                borderRadius: 8,
-                paddingHorizontal: 8,
-                height: 36,
-                borderWidth: 1,
-                borderColor: '#334155',
-              }}
-            >
-              <Text style={{ color: '#94A3B8', fontWeight: '800', fontSize: 13, marginRight: 6 }}>
-                {tenderCurrency === 'KHR' ? '៛' : '$'}
-              </Text>
-              <TextInput
-                value={tenderInput}
-                onChangeText={setTenderInput}
-                placeholder={
-                  tenderCurrency === 'KHR'
-                    ? tr('Enter KHR amount (e.g. 50,000)…', 'បញ្ចូលប្រាក់រៀល (ឧ. ៥០,០០០)…')
-                    : tr('Enter USD amount (e.g. 10.00)…', 'បញ្ចូលប្រាក់ដុល្លារ (ឧ. ១០.០០)…')
-                }
-                placeholderTextColor="#64748B"
-                keyboardType="numeric"
-                style={[
-                  {
-                    flex: 1,
-                    fontSize: 13,
-                    fontWeight: '700',
-                    color: '#FFFFFF',
-                    height: '100%',
-                  },
-                  Platform.OS === 'web' ? ({ outline: 'none' } as any) : null,
-                ]}
-              />
-            </View>
-
-            {/* Quick Pills */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
-              {(tenderCurrency === 'KHR' ? quickKhrPresets : quickUsdPresets).map((val) => (
-                <Press
-                  key={val}
-                  onPress={() => setTenderInput(String(val))}
-                  style={{
-                    backgroundColor: numericTender === val ? C.primary : '#334155',
-                    paddingHorizontal: 7,
-                    paddingVertical: 2.5,
-                    borderRadius: 5,
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 10.5, fontWeight: '800' }}>
-                    {tenderCurrency === 'KHR' ? khr(val) : `$${val}`}
-                  </Text>
-                </Press>
-              ))}
-            </View>
-
-            {/* Realtime Exchange Breakdown */}
-            {hasTender && exchange && (
-              <View
-                style={{
-                  backgroundColor: isPaidEnough ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  borderRadius: 6,
-                  padding: 6,
-                  borderWidth: 1,
-                  borderColor: isPaidEnough ? '#059669' : '#DC2626',
-                  gap: 3,
-                }}
-              >
-                {isPaidEnough ? (
-                  <>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: '#34D399', fontSize: 10.5, fontWeight: '800' }}>
-                        {tr('Change Due (ប្រាក់អាប់):', 'ប្រាក់អាប់ជូន:')}
-                      </Text>
-                      <Text style={{ color: '#34D399', fontSize: 13, fontWeight: '900' }}>
-                        {khr(exchange.changeKhr)}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 4, marginTop: 2 }}>
-                      <Press
-                        onPress={() => setSelectedChangeMode('split')}
-                        style={{
-                          flex: 1,
-                          backgroundColor: selectedChangeMode === 'split' ? C.primary : '#1E293B',
-                          paddingVertical: 3,
-                          borderRadius: 4,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>
-                          Option 1: {exchange.formattedSplit}
-                        </Text>
-                      </Press>
-                      <Press
-                        onPress={() => setSelectedChangeMode('allKhr')}
-                        style={{
-                          flex: 1,
-                          backgroundColor: selectedChangeMode === 'allKhr' ? C.primary : '#1E293B',
-                          paddingVertical: 3,
-                          borderRadius: 4,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>
-                          Option 2: {exchange.formattedAllKhr}
-                        </Text>
-                      </Press>
-                    </View>
-                  </>
-                ) : (
-                  <Text style={{ color: '#F87171', fontSize: 11, fontWeight: '800' }}>
-                    {tr('Shortfall:', 'នៅខ្វះ:')} {khr(exchange.shortfallKhr)}
-                  </Text>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Primary Fixed Top Checkout Button */}
-          <Btn
-            icon={CheckCircle2}
-            loading={busy}
-            disabled={!units || (hasTender && !isPaidEnough)}
-            onPress={handleExecuteCheckout}
-            style={{ height: 44, borderRadius: 12 }}
-          >
-            {busy
-              ? tr('Processing…', 'កំពុងទូទាត់…')
-              : hasTender && exchange && isPaidEnough
-              ? `${tr('Pay & Change', 'ទូទាត់ & អាប់')} (${selectedChangeMode === 'split' ? exchange.formattedSplit : exchange.formattedAllKhr})`
-              : `${isWholesale ? tr('Wholesale Pay', 'ទូទាត់លក់ដុំ') : tr('Pay Now', 'ទូទាត់')} · ${khr(total * rate)}`}
-          </Btn>
-
-          {/* View Cart Drawer Toggle */}
-          <Press
-            onPress={() => setCartExpanded((prev) => !prev)}
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <ShoppingBag size={13} color="#94A3B8" />
-            <Text style={{ color: '#94A3B8', fontSize: 11.5, fontWeight: '700' }}>
-              {cartExpanded
-                ? tr('Hide Cart Items ▲', 'លាក់មុខទំនិញក្នុងកន្ត្រក ▲')
-                : `${tr('View Cart Items', 'មើលកន្ត្រកទំនិញ')} (${units} ${tr('units', 'ឯកតា')}) ▼`}
-            </Text>
-          </Press>
-        </Animated.View>
-      )}
-
       {/* Product List */}
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -948,7 +712,7 @@ export default function Checkout() {
           list.map((p, i) => {
             const itemQty = getItemQty(p);
             const totalU = getTotalUnits(p, itemQty);
-            const cQty = p.caseQty || 24;
+            const cQty = p.caseQty || 1;
             const caseName = p.caseUnitName || 'Case';
             const baseName = p.baseUnit || 'pcs';
             const casePriceUsd = getCasePriceUsd(p);
@@ -978,7 +742,7 @@ export default function Checkout() {
                           numberOfLines={1}
                           style={{ fontWeight: '700', color: C.text, fontSize: 15, flex: 1 }}
                         >
-                          {p.name}
+                          {p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''}
                         </Text>
                       </View>
                       {/* Total items left directly under item title to maximize space for item name */}
@@ -1050,7 +814,7 @@ export default function Checkout() {
                       totalU === 0 ? (
                         <Animated.View key="add" entering={popIn}>
                           <Press
-                            accessibilityLabel={`Add ${p.name}`}
+                            accessibilityLabel={`Add ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''}`}
                             disabled={!canAddUnits(p, 1)}
                             onPress={() => addLoose(p, 1)}
                             scale={0.88}
@@ -1069,7 +833,7 @@ export default function Checkout() {
                       ) : (
                         <Animated.View key="step" entering={popIn} style={styles.stepperWrap}>
                           <Press
-                            accessibilityLabel={`Remove one ${p.name}`}
+                            accessibilityLabel={`Remove one ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''}`}
                             onPress={() => subLoose(p, 1)}
                             scale={0.85}
                             style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
@@ -1078,7 +842,7 @@ export default function Checkout() {
                           </Press>
                           <Text style={styles.stepperQtyText}>{totalU}</Text>
                           <Press
-                            accessibilityLabel={`Add one ${p.name}`}
+                            accessibilityLabel={`Add one ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''}`}
                             disabled={!canAddUnits(p, 1)}
                             onPress={() => addLoose(p, 1)}
                             scale={0.85}
@@ -1264,7 +1028,7 @@ export default function Checkout() {
         style={[
           styles.fixedFooter,
           {
-            paddingBottom: Math.max(insets.bottom, 12),
+            paddingBottom: Math.max(insets.bottom, 12) + 8,
           },
         ]}
       >
@@ -1320,14 +1084,14 @@ export default function Checkout() {
             style={styles.cartDrawerListWrap}
           >
             <ScrollView
-              style={{ maxHeight: 210 }}
+              style={{ maxHeight: 320 }}
               nestedScrollEnabled
               showsVerticalScrollIndicator={true}
             >
               {selected.map((p) => {
                 const itemQty = getItemQty(p);
                 const totalU = getTotalUnits(p, itemQty);
-                const cQty = p.caseQty || 24;
+                const cQty = p.caseQty || 1;
                 const caseName = p.caseUnitName || 'Case';
                 const baseName = p.baseUnit || 'pcs';
                 const itemPriceUsd = getItemPriceUsd(p, itemQty);
@@ -1339,7 +1103,7 @@ export default function Checkout() {
                           numberOfLines={1}
                           style={{ color: C.text, fontWeight: '700', fontSize: 13.5 }}
                         >
-                          {p.name}
+                          {p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''}
                         </Text>
                         {isWholesale && itemQty.cases > 0 ? (
                           <Text style={{ color: '#0F766E', fontSize: 11.5, fontWeight: '700', marginTop: 1 }}>
@@ -1471,6 +1235,20 @@ export default function Checkout() {
           </Animated.View>
         )}
 
+        {cartExpanded && units > 0 ? <View style={{gap: 8, paddingVertical: 8}}>
+          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10}}>
+            <Text style={{fontSize:18,color:'#31594B',fontWeight:'600'}}>{khr(total * rate)} <Text style={{fontSize:12,color:C.muted}}>({money(total)})</Text></Text>
+            <View style={{flexDirection:'row',gap:4,backgroundColor:C.pale,padding:3,borderRadius:9}}>
+              {(['KHR','USD'] as const).map(currency => <Press key={currency} onPress={() => {setTenderCurrency(currency);setPaidCurrency(currency);setTenderInput('');}} style={{paddingHorizontal:10,paddingVertical:5,borderRadius:7,backgroundColor:tenderCurrency===currency?C.primary:'transparent'}}><Text style={{fontSize:12,color:tenderCurrency===currency?'#FFFFFF':C.muted}}>{currency}</Text></Press>)}
+            </View>
+          </View>
+          <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+            <Text style={{fontSize:12,color:C.muted}}>{tr('Received','ប្រាក់ទទួល')}</Text>
+            <TextInput value={tenderInput} onChangeText={setTenderInput} keyboardType="decimal-pad" placeholder={tenderCurrency === 'KHR' ? '៛ 0' : '$ 0.00'} placeholderTextColor={C.muted} style={{flex:1,minHeight:44,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:C.border,borderRadius:10,backgroundColor:'#F8FAFC',fontSize:15,color:C.text}} />
+            {hasTender && <Press accessibilityLabel="Clear cash amount" onPress={()=>setTenderInput('')} style={{padding:8}}><X size={16} color={C.muted}/></Press>}
+          </View>
+          {hasTender && exchange && <View style={{flexDirection:'row',justifyContent:'space-between',paddingHorizontal:4}}><Text style={{fontSize:12,color:isPaidEnough?'#047857':'#B91C1C'}}>{isPaidEnough?tr('Change','ប្រាក់អាប់'):tr('Shortfall','នៅខ្វះ')}</Text><Text style={{fontSize:13,color:isPaidEnough?'#047857':'#B91C1C'}}>{khr(isPaidEnough?exchange.changeKhr:exchange.shortfallKhr)}</Text></View>}
+        </View> : <>
         {/* Summary & Payment Row */}
         <View style={styles.footerTopRow}>
           {/* Currency Toggle */}
@@ -1518,13 +1296,15 @@ export default function Checkout() {
           </View>
         </View>
 
+        </>}
+
         {/* Primary Checkout Action Button */}
         <Btn
           icon={CheckCircle2}
           loading={busy}
           disabled={!units}
-          onPress={() => setShowTenderModal(true)}
-          style={{ height: 50, borderRadius: 16 }}
+          onPress={() => { if (!cartExpanded) setCartExpanded(true); else handleExecuteCheckout(); }}
+          style={{ minHeight: 58, paddingVertical: 14, borderRadius: 16 }}
         >
           {busy
             ? tr('Processing Checkout…', 'កំពុងទូទាត់…')

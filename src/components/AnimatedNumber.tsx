@@ -1,6 +1,7 @@
+import { AppText as Text } from './AppText';
 import React from 'react';
 import {useEffect,useRef,useState} from 'react';
-import {Text,TextStyle,StyleProp} from 'react-native';
+import {TextStyle,StyleProp} from 'react-native';
 
 /** Counts smoothly from the previously shown value to the new one (ease-out cubic, 650 ms). */
 export function AnimatedNumber({value,format = n => Math.round(n).toLocaleString('en-US'),style}:{

@@ -1,4 +1,5 @@
-import { Platform, Text, TextInput, View } from 'react-native';
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
+import { Platform, View } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { UomConfig } from '../../api';
 import { Press } from '../../motion';

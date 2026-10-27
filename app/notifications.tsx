@@ -1,7 +1,8 @@
+import { AppText as Text } from '../src/components/AppText';
 import { useEffect, useMemo, useState } from "react";
-import { Text, View, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, ActivityIndicator, Alert, Platform } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import {
   Bell,
   ReceiptText,
@@ -31,6 +32,10 @@ type Event = {
   sale?: Sale;
 };
 export default function Notifications() {
+  if (Platform.OS !== 'web') return <Redirect href="/" />;
+  return <PortalNotifications />;
+}
+function PortalNotifications() {
   const router = useRouter();
   const { products, sales, refresh } = useLiveData("all");
   const [tab, setTab] = useState<"transaction" | "normal">("normal");

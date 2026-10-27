@@ -1,4 +1,5 @@
-import { Modal, Platform, Text, TextInput, View } from 'react-native';
+import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
+import { Modal, Platform, View } from 'react-native';
 import { Boxes, X } from 'lucide-react-native';
 import { roundKhr } from '../../theme';
 import { Press } from '../../motion';

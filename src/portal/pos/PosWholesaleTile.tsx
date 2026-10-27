@@ -1,4 +1,6 @@
-import { Text, View } from 'react-native';
+import { isProductExpired } from '../../productExpiry';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Product } from '../../api';
 import { khr, money } from '../../theme';
 import { Press } from '../../motion';
@@ -17,8 +19,9 @@ export function PosWholesaleTile({
   isCompact: boolean;
   onAdd: (product: Product, delta: number, unitType: 'case' | 'loose') => void;
 }) {
-  const outOfStock = p.stock <= 0;
-  const cQty = p.caseQty || 24;
+  const expired = isProductExpired(p);
+  const outOfStock = p.stock <= 0 || expired;
+  const cQty = p.caseQty || 1;
   const caseName = p.caseUnitName || 'Case';
   const baseName = p.baseUnit || 'pcs';
   const unitWholesaleUsd =
@@ -92,7 +95,7 @@ export function PosWholesaleTile({
           marginTop: 6,
         }}
       >
-        {outOfStock ? 'Out of stock' : `${casesInStock} ${caseName}s + ${looseInStock} ${baseName}`}
+        {expired ? 'ផុតកំណត់ · Expired' : outOfStock ? 'Out of stock' : `${casesInStock} ${caseName}s + ${looseInStock} ${baseName}`}
       </Text>
 
       <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>

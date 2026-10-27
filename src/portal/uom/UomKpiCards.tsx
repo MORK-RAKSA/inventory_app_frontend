@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { Product } from '../../api';
 import { P } from '../theme';
 import type { PortalController } from '../usePortalController';
@@ -14,7 +15,7 @@ const card = {
 } as const;
 
 function formatCaseUnits(p: Product) {
-  const cQty = p.caseQty || 24;
+  const cQty = p.caseQty || 1;
   const base = p.baseUnit || 'Piece';
   if (cQty >= 24) {
     return `${Math.floor(p.stock / cQty)} cases + ${p.stock % cQty} loose ${base}`;
@@ -23,7 +24,7 @@ function formatCaseUnits(p: Product) {
 }
 
 function getCaseCoverage(p: Product) {
-  const cQty = p.caseQty || 24;
+  const cQty = p.caseQty || 1;
   return Math.floor(p.stock / cQty);
 }
 
@@ -63,7 +64,7 @@ export function UomKpiCards({ products, tr }: { products: Product[]; tr: PortalC
           {tr('cases', 'កេស')}
         </Text>
         <Text style={{ color: P.textSub, fontSize: 11, marginTop: 2 }}>
-          +{products.reduce((acc, p) => acc + (p.stock % (p.caseQty || 24)), 0)}{' '}
+          +{products.reduce((acc, p) => acc + (p.stock % (p.caseQty || 1)), 0)}{' '}
           {tr('loose units', 'ឯកតារាយ')}
         </Text>
       </View>

@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { AppText as Text } from '../../components/AppText';
+import { View } from 'react-native';
 import { khr } from '../../theme';
 import { Press } from '../../motion';
 import { glass, P } from '../theme';

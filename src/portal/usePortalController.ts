@@ -1,6 +1,7 @@
+import { isLocalImage, uploadProductImage } from '../productImageUpload';
+import { isProductExpired } from '../productExpiry';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, useWindowDimensions } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Boxes,
   Layers,
@@ -42,7 +43,7 @@ export function usePortalController() {
   const [tab, setTab] = useState<PortalTab>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
-  const [rate, setRate] = useState<number>(4100);
+  const [rate, setRate] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [user, setUser] = useState<string>('Admin');
@@ -129,7 +130,7 @@ export function usePortalController() {
   const [salesSearch, setSalesSearch] = useState('');
 
   // Settings state
-  const [rateInput, setRateInput] = useState('4100');
+  const [rateInput, setRateInput] = useState('');
   const [savingRate, setSavingRate] = useState(false);
   const [currencyMode, setCurrencyMode] = useState<'live' | 'manual'>('manual');
   const [fetchingLiveRate, setFetchingLiveRate] = useState(false);
@@ -138,12 +139,7 @@ export function usePortalController() {
 
   useEffect(() => {
     void loadLastRateQuote().then((q) => { if (q) setLiveRateQuote(q); });
-    AsyncStorage.getItem('retailflow_currency_mode').then((saved) => {
-      if (saved === 'live' || saved === 'manual') setCurrencyMode(saved as 'live' | 'manual');
-      if (saved === 'live') {
-        void fetchLiveExchangeRate();
-      }
-    }).catch(() => {});
+
   }, []);
 
   const fetchLiveExchangeRate = useCallback(async () => {
@@ -181,8 +177,10 @@ export function usePortalController() {
   }, [playScan, playFail, toast, tr]);
 
   const toggleCurrencyMode = useCallback(async (newMode: 'live' | 'manual') => {
-    setCurrencyMode(newMode);
-    await AsyncStorage.setItem('retailflow_currency_mode', newMode).catch(() => {});
+    try {
+      await api('/settings', { method: 'PUT', body: JSON.stringify({ currencyMode: newMode }) });
+      setCurrencyMode(newMode);
+    } catch (error: any) { toast.show(error?.message || 'Could not save settings', { tone: 'error' }); return; }
     if (newMode === 'live') {
       void fetchLiveExchangeRate();
     }
@@ -191,7 +189,7 @@ export function usePortalController() {
   // Live Activity Feed state
   const [activityTick, setActivityTick] = useState(0);
   useEffect(() => subscribeLiveActivity(() => setActivityTick((n) => n + 1)), []);
-  const liveFeed = useMemo(() => getLiveActivityLog().slice(0, 6), [activityTick, products, sales]);
+  const liveFeed = useMemo(() => getLiveActivityLog().filter(e => e.barcode !== '__SWITCH_MODE__' && e.detail !== '__SWITCH_MODE__').slice(0, 6), [activityTick, products, sales]);
 
   const handleExportInventory = useCallback(
     (list: Product[]) => {
@@ -262,6 +260,7 @@ export function usePortalController() {
         }
         if (Array.isArray(cfg?.categories)) {
           setConfiguredCategories(cfg.categories);
+          if (cfg.currencyMode) setCurrencyMode(cfg.currencyMode);
         }
         if (Array.isArray(cfg?.baseUnits)) {
           setConfiguredBaseUnits(cfg.baseUnits);
@@ -307,6 +306,7 @@ export function usePortalController() {
   }, []);
 
   function addToCart(product: Product, delta = 1) {
+    if (delta > 0 && isProductExpired(product)) { toast.show('Expired product', { tone: 'error' }); return; }
     if (posMode === 'wholesale') {
       addWholesaleItem(product, delta, 'case');
     } else {
@@ -353,7 +353,7 @@ export function usePortalController() {
   }
 
   function setWholesaleQty(product: Product, targetQty: number, unitType: 'case' | 'loose' = 'case') {
-    const cQty = product.caseQty || 24;
+    const cQty = product.caseQty || 1;
     setWholesaleCart((prev) => {
       const current = prev[product.id] || { cases: 0, loose: 0 };
       const newCases = unitType === 'case' ? Math.max(0, targetQty) : current.cases;
@@ -379,7 +379,8 @@ export function usePortalController() {
   }
 
   function addWholesaleItem(product: Product, delta = 1, unitType: 'case' | 'loose' = 'case') {
-    const cQty = product.caseQty || 24;
+    if (delta > 0 && isProductExpired(product)) { toast.show('Expired product', { tone: 'error' }); return; }
+    const cQty = product.caseQty || 1;
     setWholesaleCart((prev) => {
       const current = prev[product.id] || { cases: 0, loose: 0 };
       const currentTotalUnits = current.cases * cQty + current.loose;
@@ -623,7 +624,7 @@ export function usePortalController() {
     try {
       const itemsToCommit = validRows.map((r) => {
         const uomCfg = uomConfigs.find((u) => u.id === r.uomConfigId);
-        const cQty = uomCfg?.caseQty || 24;
+        const cQty = uomCfg?.caseQty || 1;
         const casePriceRaw = r.wholesalePrice ? Number(r.wholesalePrice) : undefined;
         const casePriceUsd = casePriceRaw
           ? r.ccy === 'KHR'
@@ -718,13 +719,13 @@ export function usePortalController() {
     );
     setFormBaseUnit(p.baseUnit || 'Piece');
     setFormCaseUnitName(p.caseUnitName || 'Case');
-    setFormCaseQty(String(p.caseQty || 24));
+    setFormCaseQty(String(p.caseQty || 1));
     setFormWholesaleMinQty(String(p.wholesaleMinQty || 1));
     setFormImageUrl(p.imageUrl || null);
     const matchingUom =
       uomConfigs.find(
         (u) =>
-          u.caseQty === (p.caseQty || 24) ||
+          u.caseQty === (p.caseQty || 1) ||
           (p.caseUnitName && u.caseUnitName.toLowerCase() === p.caseUnitName.toLowerCase())
       ) || uomConfigs[0];
     setSelectedUomConfigId(matchingUom?.id || '');
@@ -770,7 +771,7 @@ export function usePortalController() {
             stock: '1',
             uomConfigId: selectedUomConfigId || (uomConfigs[0]?.id || ''),
             wholesalePrice: existing?.wholesalePriceUsd
-              ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 24) * rate))
+              ? String(roundKhr(Number(existing.wholesalePriceUsd) * (existing.caseQty || 1) * rate))
               : '',
           };
           if (emptyIdx === -1) {
@@ -916,75 +917,29 @@ export function usePortalController() {
   }, [handleHardwareBarcodeScan]);
 
   // Configured Base Units & Categories (Editable from Portal Settings / Form Dropdowns)
-  const [configuredBaseUnits, setConfiguredBaseUnits] = useState<string[]>([
-    'Can', 'Bottle', 'Piece', 'Box', 'Pack', 'Kg', 'Litre', 'Roll', 'Cup', 'Bag'
-  ]);
-  const [configuredCategories, setConfiguredCategories] = useState<string[]>([
-    'General', 'Beverages', 'Food & Snacks', 'Groceries', 'Household', 'Personal Care', 'Dairy', 'Bakery'
-  ]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const [savedUnits, savedCats] = await Promise.all([
-          AsyncStorage.getItem('retailflow_configured_base_units'),
-          AsyncStorage.getItem('retailflow_configured_categories'),
-        ]);
-        if (savedUnits) {
-          const parsed = JSON.parse(savedUnits);
-          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredBaseUnits(parsed);
-        }
-        if (savedCats) {
-          const parsed = JSON.parse(savedCats);
-          if (Array.isArray(parsed) && parsed.length > 0) setConfiguredCategories(parsed);
-        }
-      } catch (_) {}
-    })();
-  }, []);
-
-  const addConfiguredBaseUnit = (unit: string) => {
-    const clean = unit.trim();
-    if (!clean) return;
-    setConfiguredBaseUnits((prev) => {
-      if (prev.some((u) => u.toLowerCase() === clean.toLowerCase())) return prev;
-      const next = [...prev, clean];
-      AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(next)).catch(() => {});
-      void api('/settings', { method: 'PUT', body: JSON.stringify({ baseUnits: next }) }).catch(() => {});
-      return next;
-    });
-    toast.show(tr(`Added base unit: ${clean}`, `បានបន្ថែមឯកតាមូលដ្ឋាន៖ ${clean}`), { tone: 'success' });
-  };
-
-  const removeConfiguredBaseUnit = (unit: string) => {
-    setConfiguredBaseUnits((prev) => {
-      const next = prev.filter((u) => u.toLowerCase() !== unit.toLowerCase());
-      AsyncStorage.setItem('retailflow_configured_base_units', JSON.stringify(next)).catch(() => {});
-      void api('/settings', { method: 'PUT', body: JSON.stringify({ baseUnits: next }) }).catch(() => {});
-      return next;
-    });
-  };
-
-  const addConfiguredCategory = (cat: string) => {
-    const clean = cat.trim();
-    if (!clean) return;
-    setConfiguredCategories((prev) => {
-      if (prev.some((c) => c.toLowerCase() === clean.toLowerCase())) return prev;
-      const next = [...prev, clean];
-      AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(next)).catch(() => {});
-      void api('/settings', { method: 'PUT', body: JSON.stringify({ categories: next }) }).catch(() => {});
-      return next;
-    });
-    toast.show(tr(`Added category: ${clean}`, `បានបន្ថែមក្រុមទំនិញ៖ ${clean}`), { tone: 'success' });
-  };
-
-  const removeConfiguredCategory = (cat: string) => {
-    setConfiguredCategories((prev) => {
-      const next = prev.filter((c) => c.toLowerCase() !== cat.toLowerCase());
-      AsyncStorage.setItem('retailflow_configured_categories', JSON.stringify(next)).catch(() => {});
-      void api('/settings', { method: 'PUT', body: JSON.stringify({ categories: next }) }).catch(() => {});
-      return next;
-    });
-  };
+  const [configuredBaseUnits, setConfiguredBaseUnits] = useState<string[]>([]);
+  const [configuredCategories, setConfiguredCategories] = useState<string[]>([]);
+  const settingsWriteBusy = useRef(false);
+  async function saveConfiguredList(key: 'baseUnits' | 'categories', value: string, remove = false) {
+    const clean = value.trim();
+    if (!clean || settingsWriteBusy.current) return;
+    settingsWriteBusy.current = true;
+    try {
+      const current = await api<Settings>('/settings');
+      const list = current[key] || [];
+      const next = remove ? list.filter(v => v.toLowerCase() !== clean.toLowerCase())
+        : list.some(v => v.toLowerCase() === clean.toLowerCase()) ? list : [...list, clean];
+      const saved = await api<Settings>('/settings', { method: 'PUT', body: JSON.stringify({ [key]: next }) });
+      setConfiguredBaseUnits(saved.baseUnits || []);
+      setConfiguredCategories(saved.categories || []);
+    } catch (error: any) {
+      toast.show(error?.message || 'Could not save settings', { tone: 'error' });
+    } finally { settingsWriteBusy.current = false; }
+  }
+  const addConfiguredBaseUnit = (value: string) => { void saveConfiguredList('baseUnits', value); };
+  const removeConfiguredBaseUnit = (value: string) => { void saveConfiguredList('baseUnits', value, true); };
+  const addConfiguredCategory = (value: string) => { void saveConfiguredList('categories', value); };
+  const removeConfiguredCategory = (value: string) => { void saveConfiguredList('categories', value, true); };
 
   // Wireless Mobile Scanner Gun Listener
   useEffect(() => {
@@ -1251,7 +1206,7 @@ export function usePortalController() {
       .map(([id, c]) => {
         const product = products.find((p) => p.id === id);
         if (!product) return null;
-        const cQty = product.caseQty || 24;
+        const cQty = product.caseQty || 1;
         const caseName = product.caseUnitName || 'Case';
         const baseName = product.baseUnit || 'pcs';
         const unitWholesaleUsd =
@@ -1329,13 +1284,16 @@ export function usePortalController() {
     });
   }
 
+  const checkoutRetry = useRef<{ signature: string; key: string } | null>(null);
   async function completeCheckout(tenderInfo?: {
     tenderAmount: number;
     tenderCurrency: 'USD' | 'KHR';
     exchange: CambodiaCashExchange;
   }) {
+    if (!(rate > 0)) { toast.show('Load store settings before checkout', { tone: 'error' }); return; }
     const isWholesale = posMode === 'wholesale';
     const lines = isWholesale ? wholesaleCartLines : cartLines;
+    if (lines.some(line => isProductExpired(line.product))) { toast.show('Expired items cannot be checked out. Remove them from the cart.', { tone: 'error' }); return; }
     if (!lines.length || checkingOut) return;
     setCheckingOut(true);
     try {
@@ -1359,20 +1317,25 @@ export function usePortalController() {
             isWholesale: false,
           }));
 
+      const signature = JSON.stringify({ itemsPayload, tenderInfo, paidCurrency, posMode });
+      if (checkoutRetry.current?.signature !== signature) {
+        checkoutRetry.current = { signature, key: `${Date.now()}-${Math.random().toString(36).slice(2)}` };
+      }
       const sale = await api<Sale>('/sales/checkout', {
         method: 'POST',
         body: JSON.stringify({
-          idempotencyKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          idempotencyKey: checkoutRetry.current.key,
           paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
           priceTier: isWholesale ? 'WHOLESALE' : 'RETAIL',
           tenderAmount: tenderInfo?.tenderAmount,
           tenderCurrency: tenderInfo?.tenderCurrency,
-          changeText: tenderInfo?.exchange.formattedSplit,
+          changeText: tenderInfo?.exchange.formattedAllKhr,
           changeKhr: tenderInfo?.exchange.changeKhr,
           changeUsd: tenderInfo?.exchange.changeUsd,
           items: itemsPayload,
         }),
       });
+      checkoutRetry.current = null;
       markEventNotified(`sale:${sale.id}`);
       playCheckout();
       if (isWholesale) {
@@ -1385,7 +1348,7 @@ export function usePortalController() {
         paidCurrency: tenderInfo?.tenderCurrency || paidCurrency,
         tenderAmount: tenderInfo?.tenderAmount,
         tenderCurrency: tenderInfo?.tenderCurrency || paidCurrency,
-        changeText: tenderInfo?.exchange.formattedSplit,
+        changeText: tenderInfo?.exchange.formattedAllKhr,
         changeSplit: tenderInfo?.exchange.formattedSplit,
         changeAllKhr: tenderInfo?.exchange.formattedAllKhr,
       };
@@ -1398,6 +1361,7 @@ export function usePortalController() {
         { title: tr('Payment received', 'បានទទួលប្រាក់'), tone: 'success', duration: 6000 }
       );
       await loadAll(true);
+      return true;
     } catch (e: any) {
       playFail();
       toast.show(e?.message || 'Checkout failed', {
@@ -1471,7 +1435,7 @@ export function usePortalController() {
         stock: qty,
         lowStockThreshold: limit,
         expirationDate: formExpiry.trim() || null,
-        imageUrl: formImageUrl || null,
+        imageUrl: isLocalImage(formImageUrl) ? editingProduct?.imageUrl || null : formImageUrl || null,
         wholesalePrice:
           wholesaleUsdVal !== null
             ? (formCcy === 'KHR'
@@ -1491,13 +1455,18 @@ export function usePortalController() {
             : null,
         wholesalePricePerCaseUsd: wholesalePricePerCase,
       };
-      const result = await api<Product>(
+      let result = await api<Product>(
         editingProduct ? `/products/${editingProduct.id}` : '/products',
         {
           method: editingProduct ? 'PUT' : 'POST',
           body: JSON.stringify(payload),
         }
       );
+      if (result?.id && isLocalImage(formImageUrl)) {
+        setEditingProduct(result);
+        result = await uploadProductImage(result.id, formImageUrl!);
+        setFormImageUrl(result.imageUrl || null);
+      }
       if (result?.id) {
         markEventNotified(`add:${result.id}`);
         markEventNotified(
@@ -1580,7 +1549,8 @@ export function usePortalController() {
   }
 
   async function saveExchangeRate() {
-    const parsed = roundKhr(Number(rateInput) || 4100);
+    const parsed = roundKhr(Number(rateInput));
+    if (!Number.isFinite(parsed) || parsed <= 0) { toast.show('Enter a valid exchange rate', { tone: 'error' }); return; }
     setSavingRate(true);
     try {
       const res = await api<Settings>('/settings/rate', {

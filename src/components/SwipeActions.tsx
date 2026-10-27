@@ -1,5 +1,6 @@
+import { AppText as Text } from './AppText';
 import React, { useRef } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
   SharedValue,
