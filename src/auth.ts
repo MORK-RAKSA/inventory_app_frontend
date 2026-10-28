@@ -41,12 +41,14 @@ function getCandidateBases(): string[] {
   }
 
   // 2. PRIMARY ENV: When EXPO_PUBLIC_API_URL or API_URL is explicitly set
-  if (envBase) {
+  if (envBase && !(Platform.OS !== "web" && !__DEV__ && /^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:|\/|$)/i.test(envBase))) {
     list.push(envBase);
   }
 
   // 3. CLOUD BACKEND (Render)
   list.push("https://inventory-app-backend-5iet.onrender.com/api");
+
+  if (Platform.OS !== 'web') list.push('https://inventoryappfrontend.vercel.app/api');
 
   // 4. LOCAL BACKEND FALLBACKS (Port 8080)
   if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -60,10 +62,6 @@ function getCandidateBases(): string[] {
     ) {
       list.push(`${protocol}//${hostname}:8080/api`);
     }
-  } else {
-    // Android emulator / native localhost
-    list.push("http://localhost:8080/api");
-    list.push("http://10.0.2.2:8080/api");
   }
 
   const filtered = list.filter(Boolean);
@@ -99,10 +97,15 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     : getCandidateBases();
 
   let lastError: unknown = null;
+  let lastResponse: Response | null = null;
   for (const base of candidates) {
     try {
       const url = buildUrl(base, path);
-      const res = await fetch(url, init);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), path === "/auth/login" ? 60000 : 25000);
+      let res: Response;
+      try { res = await fetch(url, { ...init, signal: init?.signal || controller.signal }); }
+      finally { clearTimeout(timer); }
       // Skip server bad gateways (502, 503, 504), loop detected (508), internal error (500),
       // method not allowed (405 from static edge rewrites), or 404 from non-matching static routes
       // so we fall back to working backend URLs
@@ -116,6 +119,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
         res.status === 508
       ) {
         if (activeBase === base) activeBase = null;
+        lastResponse = res;
         lastError = new Error(`Server at ${base} returned HTTP ${res.status}`);
         continue;
       }
@@ -129,9 +133,10 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       return res;
     } catch (err) {
       if (activeBase === base) activeBase = null;
-      lastError = err;
+      lastError = new Error(`${base}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  if (lastResponse) return lastResponse;
   throw lastError instanceof Error
     ? lastError
     : new Error("Cannot connect to backend server");
@@ -173,11 +178,13 @@ async function request(path: string, body: object) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  } catch {
-    throw new Error('Cannot reach the authentication server. Check your connection and the deployed API configuration.');
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Network request failed';
+    throw new Error(`Cannot connect to sign-in server. ${detail}`);
   }
 
   if (!r.ok) {
+    if (r.status >= 500) throw new Error(`Authentication server error (${r.status}). Please try again shortly. If it continues, check backend logs.`);
     let errMsg = "";
     try {
       const errJson = await r.json();

@@ -196,6 +196,17 @@ export default function Root() {
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      for (const [name, content] of Object.entries({
+        'viewport': 'width=device-width, initial-scale=1, viewport-fit=cover',
+        'apple-mobile-web-app-capable': 'yes',
+        'apple-mobile-web-app-title': 'EasySell',
+        'apple-mobile-web-app-status-bar-style': 'default',
+        'theme-color': '#F7F4FC',
+      })) {
+        let meta = document.querySelector(`meta[name="${name}"]`);
+        if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', name); document.head.appendChild(meta); }
+        meta.setAttribute('content', content);
+      }
       const styleId = 'global-portal-no-focus-outline';
       if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
@@ -687,35 +698,7 @@ export default function Root() {
                   animation: 'slide_from_right',
                 }}
               />
-              {Platform.OS === 'web' && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 14,
-                    right: 14,
-                    zIndex: 999,
-                  }}
-                >
-                  <Press
-                    onPress={() => setUiMode('portal')}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      backgroundColor: '#0F172A',
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 99,
-                      ...shadow.md,
-                    }}
-                  >
-                    <Monitor size={14} color="#C4B5FD" />
-                    <Text style={{color: '#FFFFFF', fontSize: 12, fontWeight: '800'}}>
-                      Portal Website
-                    </Text>
-                  </Press>
-                </View>
-              )}
+
             </View>
           )}
         </LanguageProvider>

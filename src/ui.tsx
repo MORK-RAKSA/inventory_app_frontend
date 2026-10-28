@@ -67,8 +67,8 @@ export function Card({children,style,index}:{children:React.ReactNode;style?:Sty
 export function GradientCard({children,style}:{children:React.ReactNode;style?:StyleProp<ViewStyle>}) {
   const id = 'g' + useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
-    <View style={[{borderRadius: R.xl, overflow: 'hidden', marginBottom: 14, ...shadow.md}, style]}>
-      <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
+    <View style={[{borderRadius: R.xl, overflow: 'hidden', marginBottom: 14, backgroundColor:'#6946B8', ...shadow.md}, style]}>
+      <Svg width="100%" height="100%" pointerEvents="none" style={StyleSheet.absoluteFill} preserveAspectRatio="none">
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor="#7E5CD6" />

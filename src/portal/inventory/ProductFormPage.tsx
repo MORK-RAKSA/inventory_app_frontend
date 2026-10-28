@@ -578,7 +578,7 @@ export function ProductFormPage({ portal }: { portal: PortalController }) {
             </View>
 
             {/* Stock Quantity & Low Stock Alert */}
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 14 }}>
+            <View style={{ gap: 12, marginBottom: 14 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: P.textSub, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>
                   {editingProduct ? tr('CURRENT STOCK', 'ចំនួនស្តុកបច្ចុប្បន្ន') : tr('INITIAL STOCK', 'ចំនួនស្តុកដំបូង')}
@@ -587,7 +587,7 @@ export function ProductFormPage({ portal }: { portal: PortalController }) {
 
               </View>
 
-              <View style={{ flex: 1 }}>
+              <View style={{ width: '100%', maxWidth: 280 }}>
                 <Text style={{ color: P.textSub, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>
                   {tr('LOW STOCK ALERT', 'កម្រិតជូនដំណឹងស្តុកទាប')}
                 </Text>
