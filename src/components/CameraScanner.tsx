@@ -1,3 +1,4 @@
+import { acceptCameraRead } from '../scannerRead';
 import { ScannerViewport, scannerFrame } from './ScannerViewport';
 import { ScannerControls, ScannerCaptureButton } from './ScannerControls';
 import { captureBarcode, decodeNativePhoto, photoScanningAvailable } from '../scannerPhoto';
@@ -150,6 +151,9 @@ export function CameraScanner({
   const last = useRef({ code: '', at: 0 });
   const pendingRead = useRef({ code: '', n: 0, at: 0 });
   /** Closed while the same barcode stays in the viewfinder so one item is only counted once. */
+  const processingRead = useRef(false);
+  const closingScanner = useRef(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latch = useRef(createScanGate());
   const cameraLayout = useRef({ width: 0, height: 0 });
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -267,30 +271,17 @@ export function CameraScanner({
   }
 
   /** Validate camera reads, require three stable detections, then apply duplicate suppression. */
-  function cameraRead(raw: string, type?: string) {
-    const value = raw.trim();
-    if (!value) return;
-    const validated = validateBarcodeRead(value, type, 'camera');
-    if (!validated.ok) return;
-
-    // Canonical form (UPC-A → EAN-13) so the latch matches every frame of the same physical code.
-    const cleanCode = canonicalBarcode(validated.code);
-    const now = Date.now();
-
-    // Check duplicate gate: if user is holding the same barcode in front of camera,
-    // this updates seenAt and returns true, so duplicate scans are 100% prevented
-    // until barcode is removed from view for at least 800ms.
-    if (isDuplicateScan(latch.current, cleanCode, now, 800)) return;
-
-    // First detection: lock gate immediately so upcoming frames of this barcode are ignored
-    if (!validated.checksumVerified && !confirmRead(pendingRead.current, cleanCode, now)) return;
-    rememberScan(latch.current, cleanCode, now);
-    void scanned(cleanCode);
+  function cameraRead(raw:string,type?:string) {
+    if(closingScanner.current || photoBusy.current)return;
+    if(processingRead.current){isDuplicateScan(latch.current,canonicalBarcode(raw),Date.now(),800);return;}
+    const code=acceptCameraRead(latch.current,pendingRead.current,raw,type,Date.now());
+    if(code)void scanned(code);
   }
 
   async function scanned(raw: string) {
     const value = canonicalBarcode(raw);
-    if (!value) return;
+    if (!value || processingRead.current || closingScanner.current) return;
+    processingRead.current = true;
     const now = Date.now();
 
     last.current = { code: value, at: now };
@@ -325,7 +316,8 @@ export function CameraScanner({
         (typeof result === 'object' && result !== null && result.closeScanner === true);
 
       if (shouldClose) {
-        setTimeout(() => {
+        closingScanner.current = true;
+        closeTimer.current = setTimeout(() => {
           onClose();
         }, 380);
       }
@@ -334,7 +326,7 @@ export function CameraScanner({
         'fail',
         e?.message || tr('Scan failed', 'ស្កេនបរាជ័យ'),
       );
-    }
+    } finally { processingRead.current = false; }
   }
 
   // Mobile camera barcode session — keep the device awake for the duration of scanning
@@ -459,6 +451,8 @@ export function CameraScanner({
     if (!visible) {
       last.current = { code: '', at: 0 };
       pendingRead.current = { code: '', n: 0, at: 0 };
+      closingScanner.current = false;
+      if(closeTimer.current)clearTimeout(closeTimer.current);
       setTorch(false);
       setScanCount(0);
       setLastLabel('');
@@ -468,6 +462,8 @@ export function CameraScanner({
       setCameraReady(false);
     }
   }, [visible]);
+
+  useEffect(()=>()=>{if(closeTimer.current)clearTimeout(closeTimer.current);},[]);
 
   const roundBtn = {
     backgroundColor: '#00000088',

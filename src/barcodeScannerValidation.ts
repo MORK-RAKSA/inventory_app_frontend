@@ -83,7 +83,7 @@ export function validateBarcodeRead(
     const upca = expandUPCE(code);
     const verified = Boolean(upca && isValidGTIN(upca));
     if (!verified && _source !== 'manual') return { ok: false, reason: 'Invalid barcode check digit. Please scan again.' };
-    return { ok: true, code, format, checksumVerified: verified };
+    return { ok: true, code: verified ? upca! : code, format, checksumVerified: verified };
   }
 
   if (format === 'code39' && !/^[0-9A-Z\-.$/+% ]+$/i.test(code)) {

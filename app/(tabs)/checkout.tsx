@@ -224,11 +224,11 @@ export default function Checkout() {
   const canAddUnits = (p: Product, unitsToAdd = 1) =>
     p.stock > 0 && getTotalUnits(p) + unitsToAdd <= p.stock;
 
-  function addCase(p: Product, count = 1) {
+  function addCase(p: Product, count = 1, silent = false) {
     if (count > 0 && isProductExpired(p)) { toast.show('Expired product cannot be sold', { tone: 'error' }); return; }
     const cQty = p.caseQty || 1;
     if (!canAddUnits(p, count * cQty)) {
-      playFail();
+      if (!silent) playFail();
       toast.show(
         tr(
           `Not enough stock for ${count} ${p.caseUnitName || 'Case'}`,
@@ -238,7 +238,7 @@ export default function Checkout() {
       );
       return;
     }
-    playScan();
+    if (!silent) playScan();
     setError('');
     setCart((prev) => {
       const cur = prev[p.id] || { cases: 0, loose: 0 };
@@ -269,17 +269,17 @@ export default function Checkout() {
     });
   }
 
-  function addLoose(p: Product, count = 1) {
+  function addLoose(p: Product, count = 1, silent = false) {
     if (count > 0 && isProductExpired(p)) { toast.show('Expired product cannot be sold', { tone: 'error' }); return; }
     if (!canAddUnits(p, count)) {
-      playFail();
+      if (!silent) playFail();
       toast.show(
         tr(`${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} is out of stock`, `${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} អស់ពីស្តុកហើយ`),
         { tone: 'error' }
       );
       return;
     }
-    playScan();
+    if (!silent) playScan();
     setError('');
     setCart((prev) => {
       const cur = prev[p.id] || { cases: 0, loose: 0 };
@@ -396,7 +396,7 @@ export default function Checkout() {
     const clean = code.trim();
     const p = products.find((x) => sameBarcode(x.barcode, clean));
     if (!p) {
-      playFail();
+
       const msg = tr(
         `Product not found (${clean})`,
         `រកមិនឃើញទំនិញ (${clean})`
@@ -404,29 +404,30 @@ export default function Checkout() {
       setError(msg);
       return { ok: false, message: msg };
     }
+    if (isProductExpired(p)) return {ok:false,message:'Expired product cannot be sold'};
     const unitsNeeded = isWholesale ? (p.caseQty || 1) * qty : qty;
     if (!canAddUnits(p, unitsNeeded)) {
-      playFail();
+
       const left = p.stock - getTotalUnits(p);
       const msg = tr(
-        `Out of stock: ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} (${Math.max(0, left)} left)`,
-        `អស់ពីស្តុក៖ ${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} (សល់ ${Math.max(0, left)})`
+        `Out of stock: ${p.name} (${Math.max(0, left)} left)`,
+        `អស់ពីស្តុក៖ ${p.name} (សល់ ${Math.max(0, left)})`
       );
       setError(msg);
       return { ok: false, message: msg };
     }
 
-    playScan();
+
     setError('');
     if (isWholesale) {
-      addCase(p, qty);
+      addCase(p, qty, true);
     } else {
-      addLoose(p, qty);
+      addLoose(p, qty, true);
     }
     const currentPrice = getItemPriceUsd(p);
     return {
       ok: true,
-      label: `${p.name}{isProductExpired(p) ? ' · ផុតកំណត់' : ''} (+${isWholesale ? `${qty} ${p.caseUnitName || 'Case'}` : qty}) · ${khr(currentPrice * rate)}`,
+      label: `${p.name} (+${isWholesale ? `${qty} ${p.caseUnitName || 'Case'}` : qty}) · ${khr(currentPrice * rate)}`,
     };
   }
 

@@ -151,7 +151,7 @@ export default function Inventory() {
         (p) => sameBarcode(p.barcode, clean)
       );
       if (!found) {
-        playFail();
+
         return {
           ok: false,
           message: tr(
@@ -160,7 +160,7 @@ export default function Inventory() {
           ),
         };
       }
-      playScan();
+
       setSearch(clean);
       setFilter('All');
       setOnlyLow(false);
@@ -177,7 +177,7 @@ export default function Inventory() {
       (p) => sameBarcode(p.barcode, clean)
     );
     if (existing) {
-      playScan();
+
       const baseStock =
         editing?.id === existing.id ? Number(stock) || existing.stock : existing.stock;
       const nextStock = baseStock + qty;
@@ -206,7 +206,7 @@ export default function Inventory() {
     }
 
     // New barcode scanned: accumulate quantity if scanned multiple times
-    playScan();
+
     const isDifferentBarcode = barcode.trim() !== clean;
     setStock((prev) => {
       const currentQty = !isDifferentBarcode ? Number(prev) || 0 : 0;

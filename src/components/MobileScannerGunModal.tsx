@@ -1,3 +1,4 @@
+import { acceptCameraRead } from '../scannerRead';
 import { ScannerViewport, scannerFrame } from './ScannerViewport';
 import { ScannerControls, ScannerCaptureButton } from './ScannerControls';
 import { captureBarcode, decodeNativePhoto, photoScanningAvailable } from '../scannerPhoto';
@@ -385,22 +386,12 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
    * A GTIN whose check digit verified is trusted on the first frame (instant feedback). Other
    * symbologies still require two matching frames before they are beamed.
    */
-  function handleBarcodeScanned(result: { data?: string; type?: string; bounds?: any }) {
-    if (photoBusy.current) return;
-    if (!isInsideGunFrame(result?.bounds, gunCameraLayout.current)) { pendingRead.current.n = 0; return; }
-    const raw = (result?.data || '').trim();
-    if (!raw) return;
-    setCameraReady(true);
-    const validation = validateBarcodeRead(raw, result.type, 'camera');
-    if (!validation.ok) return;
-
-    const code = canonicalBarcode(validation.code);
-    const now = Date.now();
-    if (isDuplicateScan(latch.current, code, now, 800)) return;
-
-    if (!validation.checksumVerified && !confirmRead(pendingRead.current, code, now)) return;
-    rememberScan(latch.current, code, now);
-    void handleCode(code);
+  function handleBarcodeScanned(result: {data?:string;type?:string;bounds?:any}) {
+    if(photoBusy.current)return;
+    if(!isInsideGunFrame(result.bounds,gunCameraLayout.current)){pendingRead.current.n=0;return;}
+    const code=acceptCameraRead(latch.current,pendingRead.current,result.data || '',result.type,Date.now());
+    // The shared gate already accepted this frame. Do not reject it as a duplicate again.
+    if(code)void handleCode(code,{skipLatch:true});
   }
 
   function submitManual() {
@@ -409,7 +400,8 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
     setManualCode('');
     const validation = validateBarcodeRead(raw, undefined, 'manual');
     // Explicit user action → always processed, even if the camera just saw the same code.
-    void handleCode(validation.ok ? validation.code : raw, { skipLatch: true });
+    if (!validation.ok) { playFail(); pulse('fail'); setPickNotice(validation.reason); return; }
+    void handleCode(validation.code, { skipLatch: true });
   }
 
   async function capturePhoto() {

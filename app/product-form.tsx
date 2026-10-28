@@ -818,11 +818,11 @@ export default function ProductFormScreen() {
               {tr('Stock & Expiry', 'ស្តុក និងកាលបរិច្ឆេទផុតកំណត់')}
             </Text>
 
-            <View style={styles.twoColumnRow}>
-              <View style={{ flex: 1 }}>
-                <View style={{flex:1}}><Text style={{fontSize:12,color:'#64748B',marginBottom:6}}>Stock quantity</Text><StockUnitInput currentStock={isEditing ? products.find(p=>p.id===params.id)?.stock : undefined} value={stock} onChange={setStock} templates={uomTemplates} baseUnit={baseUnit} baseUnits={availableBaseUnits} onBaseUnitChange={unit=>{setBaseUnit(unit);setCaseUnitName('');setCaseQty('');}} onTemplateChange={t=>{setBaseUnit(t.baseUnit);setCaseUnitName(t.caseUnitName);setCaseQty(String(t.caseQty));}}/></View>
+            <View style={{gap:14}}>
+              <View style={{width:'100%'}}>
+                <View><Text style={{fontSize:12,color:'#64748B',marginBottom:6}}>Stock quantity</Text><StockUnitInput currentStock={isEditing ? products.find(p=>p.id===params.id)?.stock : undefined} value={stock} onChange={setStock} templates={uomTemplates} baseUnit={baseUnit} baseUnits={availableBaseUnits} onBaseUnitChange={unit=>{setBaseUnit(unit);setCaseUnitName('');setCaseQty('');}} onTemplateChange={t=>{setBaseUnit(t.baseUnit);setCaseUnitName(t.caseUnitName);setCaseQty(String(t.caseQty));}}/></View>
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{width:'100%',maxWidth:300}}>
                 <Field
                   label={tr('Low Stock Alert', 'ផ្តល់ដំណឹងពេលសល់')}
                   value={threshold}

@@ -91,7 +91,7 @@ export default function Batch() {
       (x) => String(x.barcode || "").toLowerCase() === code.toLowerCase()
     );
     if (p) {
-      playScan();
+
       setPending((prev) => {
         const existing = prev.find((x) => x.product?.id === p.id);
         return existing
@@ -117,7 +117,7 @@ export default function Batch() {
         label: `${p.name} (+${qty})`,
       };
     } else {
-      playScan();
+
       const newKey = `new-${Date.now()}-${code}`;
       setPending((prev) =>
         prev.some((x) => x.barcode === code)
