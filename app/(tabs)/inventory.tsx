@@ -284,7 +284,7 @@ export default function Inventory() {
     if (p) {
       router.push({ pathname: '/product-form', params: { id: p.id } });
     } else {
-      router.push({ pathname: '/product-form', params: scanImmediately ? { barcode: '' } : {} });
+      router.push({ pathname: '/product-form', params: scanImmediately ? { scan: '1' } : {} });
     }
   }
 

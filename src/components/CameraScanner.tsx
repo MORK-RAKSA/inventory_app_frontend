@@ -1,3 +1,6 @@
+import { ScannerViewport, scannerFrame } from './ScannerViewport';
+import { ScannerControls, ScannerCaptureButton } from './ScannerControls';
+import { captureBarcode, decodeNativePhoto, photoScanningAvailable } from '../scannerPhoto';
 import { AppTextInput as TextInput, AppText as Text } from './AppText';
 import { insideFrame, confirmRead } from '../scannerAcceptance';
 import React, { useEffect, useRef, useState } from 'react';
@@ -89,7 +92,7 @@ function isInsideScannerFrame(
   isCheckout: boolean
 ): boolean {
   if (!layout.width || !layout.height) return false;
-  return insideFrame(bounds, { x: layout.width * 0.07, y: layout.height * (isCheckout ? 0.14 : 0.24), width: layout.width * 0.86, height: isCheckout ? 142 : 165 });
+  return insideFrame(bounds, scannerFrame(layout.width));
 }
 
 export function CameraScanner({
@@ -132,12 +135,15 @@ export function CameraScanner({
   const [permission, requestPermission] = useCameraPermissions({ get: false });
   const [cameraError, setCameraError] = useState('');
   const [manual, setManual] = useState('');
-  const [zoomLevel, setZoomLevel] = useState<0 | 1 | 2>(1);
+  const [zoomLevel, setZoomLevel] = useState<0 | 1 | 2>(0);
   const [torch, setTorch] = useState(false);
   const [lastLabel, setLastLabel] = useState('');
   const [scanCount, setScanCount] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [customQty, setCustomQty] = useState('');
+  const cameraRef = useRef<CameraView>(null);
+  const photoBusy = useRef(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [bannerState, setBannerState] = useState<'idle' | 'success' | 'fail'>('idle');
   const [failReason, setFailReason] = useState('');
@@ -150,36 +156,7 @@ export function CameraScanner({
   const { tr } = useLanguage();
   const { playScan, playFail } = useSounds();
 
-  // Distinct color palettes for Search Finder vs POS Checkout vs Stock Add Mode
-  const theme = isSearch
-    ? {
-        bg: '#0B1D28',
-        surface: '#132D3E',
-        accent: '#0D9488',
-        accentBright: '#2DD4BF',
-        border: '#5EEAD4',
-        muted: '#88B4C8',
-        badgeBg: '#0D948833',
-      }
-    : isCheckout
-      ? {
-          bg: '#0F172A',
-          surface: '#1E293B',
-          accent: '#6D28D9',
-          accentBright: '#34D399',
-          border: '#A78BFA',
-          muted: '#94A3B8',
-          badgeBg: '#6D28D933',
-        }
-      : {
-          bg: '#150F26',
-          surface: '#302548',
-          accent: '#7550C8',
-          accentBright: '#4ADE80',
-          border: '#D8C5FF',
-          muted: '#B7AECA',
-          badgeBg: '#7550C833',
-        };
+  const theme = {bg:'#0A0E1A',surface:'#151B2C',accent:'#34D399',accentBright:'#34D399',border:'#2A334D',muted:'#8F9BB7',badgeBg:'#153936'};
 
   const zoomValue = zoomLevel === 0 ? 0 : zoomLevel === 1 ? 0.08 : 0.22;
   const zoomText = zoomLevel === 0 ? '1×' : zoomLevel === 1 ? '1.5×' : '2.5×';
@@ -306,7 +283,7 @@ export function CameraScanner({
     if (isDuplicateScan(latch.current, cleanCode, now, 800)) return;
 
     // First detection: lock gate immediately so upcoming frames of this barcode are ignored
-    if (!confirmRead(pendingRead.current, cleanCode, now)) return;
+    if (!validated.checksumVerified && !confirmRead(pendingRead.current, cleanCode, now)) return;
     rememberScan(latch.current, cleanCode, now);
     void scanned(cleanCode);
   }
@@ -384,12 +361,12 @@ export function CameraScanner({
         const offsetX = (video.videoWidth * scale - layout.width) / 2;
         const offsetY = (video.videoHeight * scale - layout.height) / 2;
         const crop = document.createElement('canvas');
-        crop.width = Math.round(layout.width * 0.86 / scale);
-        crop.height = Math.round((isCheckout ? 142 : 165) / scale);
+        crop.width = Math.round((layout.width - 52) / scale);
+        crop.height = Math.round(164 / scale);
         const ctx = crop.getContext('2d');
         if (!ctx) return;
-        ctx.drawImage(video, (layout.width * 0.07 + offsetX) / scale,
-          (layout.height * (isCheckout ? 0.14 : 0.24) + offsetY) / scale,
+        ctx.drawImage(video, (26 + offsetX) / scale,
+          (34 + offsetY) / scale,
           crop.width, crop.height, 0, 0, crop.width, crop.height);
         const results = await detector.detect(crop);
         const value = results?.[0]?.rawValue;
@@ -407,6 +384,18 @@ export function CameraScanner({
     };
   }, [visible, multiplier, customQty, isSearch, isCheckout]);
 
+  async function capturePhoto() {
+    if (!photoScanningAvailable()) return;
+    if (photoBusy.current || !cameraReady) return;
+    if (!cameraRef.current) return;
+    photoBusy.current=true;setPhotoLoading(true);
+    try {
+      const layout=cameraLayout.current;
+      const code=await captureBarcode(cameraRef.current,layout,scannerFrame(layout.width));
+      if(code) { await scanned(code); } else { triggerVisualFeedback('fail', 'No barcode found in frame. Hold steady and try again.'); }
+    } catch { triggerVisualFeedback('fail', 'No barcode found in frame. Hold steady and try again.'); } finally {photoBusy.current=false;setPhotoLoading(false);}
+  }
+
   async function snapCurrentFrame() {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const videos = document.querySelectorAll('video');
@@ -422,12 +411,12 @@ export function CameraScanner({
         const offsetX = (video.videoWidth * scale - layout.width) / 2;
         const offsetY = (video.videoHeight * scale - layout.height) / 2;
         const crop = document.createElement('canvas');
-        crop.width = Math.round(layout.width * 0.86 / scale);
-        crop.height = Math.round((isCheckout ? 142 : 165) / scale);
+        crop.width = Math.round((layout.width - 52) / scale);
+        crop.height = Math.round(164 / scale);
         const ctx = crop.getContext('2d');
         if (!ctx) return;
-        ctx.drawImage(video, (layout.width * 0.07 + offsetX) / scale,
-          (layout.height * (isCheckout ? 0.14 : 0.24) + offsetY) / scale,
+        ctx.drawImage(video, (26 + offsetX) / scale,
+          (34 + offsetY) / scale,
           crop.width, crop.height, 0, 0, crop.width, crop.height);
         const results = await detector.detect(crop);
             if (results && results.length > 0 && results[0].rawValue) {
@@ -445,6 +434,7 @@ export function CameraScanner({
   }
 
   async function scanFromImage() {
+    if (!photoScanningAvailable()) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 1,
@@ -452,8 +442,8 @@ export function CameraScanner({
     if (result.canceled || !result.assets?.[0]?.uri) return;
     const uri = result.assets[0].uri;
 
-    if (Platform.OS === 'web') {
-      const code = await decodeBarcodeFromImageUri(uri);
+    {
+      const code = Platform.OS === 'web' ? await decodeBarcodeFromImageUri(uri) : await decodeNativePhoto(uri);
       if (code) {
         void scanned(code);
       } else {
@@ -609,272 +599,14 @@ export function CameraScanner({
           </Press>
         </View>
 
-        {/* Camera viewport — the scanner overlay visibly indicates when the camera feed is paused */}
-        {permission?.granted ? (
-          <View
-            onLayout={(e) => {
-              const { width, height } = e.nativeEvent.layout;
-              cameraLayout.current = { width, height };
-            }}
-            style={{
-              flex: isCheckout ? 0 : 1,
-              height: isCheckout ? 235 : undefined,
-              marginHorizontal: 15,
-              borderRadius: 24,
-              overflow: 'hidden',
-            }}
-          >
-            {/* No `key` here: re-mounting the camera to toggle the torch switched it straight back off. */}
-            <CameraView
-              active={visible}
-              style={{ flex: 1 }}
-              facing="back"
-              autofocus="on"
-              zoom={zoomValue}
-              enableTorch={Platform.OS !== 'web' && torch}
-              barcodeScannerSettings={{ barcodeTypes: ALL_BARCODE_TYPES }}
-              onBarcodeScanned={(e: any) => {
-                if (!isInsideScannerFrame(e.bounds, cameraLayout.current, isCheckout)) {
-                  pendingRead.current.n = 0;
-                  return;
-                }
-                setCameraReady(true);
-                cameraRead(e.data, e.type);
-              }}
-              onCameraReady={() => {
-                setCameraReady(true);
-                setCameraError('');
-              }}
-              onMountError={(e) => {
-                setCameraReady(false);
-                setCameraError(e.message || 'Camera unavailable');
-              }}
-            />
-
-            {/* Screen Flash Overlay on Success / Fail */}
-            <Animated.View
-              pointerEvents="none"
-              style={[StyleSheet.absoluteFill, screenFlashStyle]}
-            />
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                {
-                  position: 'absolute',
-                  top: isCheckout ? '14%' : '24%',
-                  left: '7%',
-                  right: '7%',
-                  height: isCheckout ? 142 : 165,
-                  borderWidth: 3,
-                  borderRadius: 22,
-                  overflow: 'hidden',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 12,
-                },
-                frame,
-              ]}
-            >
-              {bannerState === 'idle' && (
-                <Animated.View
-                  style={[
-                    {
-                      position: 'absolute',
-                      top: 10,
-                      left: 14,
-                      right: 14,
-                      height: 2.5,
-                      borderRadius: 2,
-                      backgroundColor: theme.accentBright,
-                    },
-                    line,
-                  ]}
-                />
-              )}
-              {isSuccess && (
-                <Animated.View
-                  entering={FadeIn.duration(100)}
-                  exiting={FadeOut.duration(140)}
-                  style={{
-                    backgroundColor: '#059669F2',
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 999,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    maxWidth: '96%',
-                  }}
-                >
-                  <CheckCircle2 size={20} color="#FFFFFF" />
-                  <Text
-                    numberOfLines={1}
-                    style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13.5 }}
-                  >
-                    {tr('Scanned!', 'ស្កេនជោគជ័យ!')} {lastLabel}
-                  </Text>
-                </Animated.View>
-              )}
-              {!cameraReady && (
-                <View style={{ alignItems: 'center', marginTop: 8 }}>
-                  <Text style={{ color: '#FCA5A5', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
-                    {tr('Camera paused', 'កាមេរ៉ាឈ្លាក់')}
-                  </Text>
-                </View>
-              )}
-              {isFail && (
-                <Animated.View
-                  entering={FadeIn.duration(100)}
-                  exiting={FadeOut.duration(140)}
-                  style={{
-                    backgroundColor: '#DC2626F5',
-                    borderWidth: 1.5,
-                    borderColor: '#FCA5A5',
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 18,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    maxWidth: '96%',
-                  }}
-                >
-                  <AlertTriangle size={20} color="#FFFFFF" />
-                  <Text
-                    numberOfLines={2}
-                    style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13, flexShrink: 1 }}
-                  >
-                    {failReason || tr('Scan Failed · Item not found', 'ស្កេនបរាជ័យ · រកមិនឃើញទំនិញ')}
-                  </Text>
-                </Animated.View>
-              )}
-            </Animated.View>
-
-            {/* Camera Controls Overlay */}
-            <View
-              style={{
-                position: 'absolute',
-                bottom: 10,
-                left: 12,
-                right: 12,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {Platform.OS === 'web' ? (
-                  <>
-                    <Press
-                      accessibilityLabel="Snap barcode frame"
-                      onPress={() => void snapCurrentFrame()}
-                      style={[roundBtn, { backgroundColor: theme.accent }]}
-                    >
-                      <Camera color="white" size={16} />
-                      <Text style={{ color: 'white', fontWeight: '800', fontSize: 11.5 }}>
-                        {tr('Snap', 'ថតស្កេន')}
-                      </Text>
-                    </Press>
-                    <Press
-                      accessibilityLabel="Scan barcode from image"
-                      onPress={() => void scanFromImage()}
-                      style={roundBtn}
-                    >
-                      <ImagePlus color="white" size={16} />
-                      <Text style={{ color: 'white', fontWeight: '800', fontSize: 11.5 }}>
-                        {tr('Image', 'រូបភាព')}
-                      </Text>
-                    </Press>
-                  </>
-                ) : (
-                  <View
-                    style={{
-                      backgroundColor: '#00000099',
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 12,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 5,
-                    }}
-                  >
-                    <Sparkles size={13} color={theme.border} />
-                    <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
-                      {tr('Anti-glare active', 'ការពារចាំងពន្លឺ')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Press
-                  onPress={() => setZoomLevel((z) => ((z + 1) % 3) as 0 | 1 | 2)}
-                  style={roundBtn}
-                >
-                  <Text style={{ color: 'white', fontWeight: '800', fontSize: 12.5 }}>{zoomText}</Text>
-                </Press>
-                <Press
-                  accessibilityLabel={torch ? 'Turn flashlight off' : 'Turn flashlight on'}
-                  onPress={() => {
-                    if (Platform.OS === 'web')
-                      Alert.alert(
-                        'Flashlight unavailable',
-                        'Use the native iOS or Android app for camera torch control.',
-                      );
-                    else setTorch((v) => !v);
-                  }}
-                  style={roundBtn}
-                >
-                  {torch ? (
-                    <FlashlightOff color="white" size={18} />
-                  ) : (
-                    <Flashlight color="white" size={18} />
-                  )}
-                </Press>
-              </View>
-            </View>
-          </View>
-        ) : (              <View style={{ flex: 1, justifyContent: 'center', padding: 30, gap: 12 }}>
-            <Text style={{ color: 'white', textAlign: 'center', marginBottom: 8 }}>
-              {cameraError
-                ? tr(
-                    'Camera access was blocked. Allow camera permission or pick a barcode photo below.',
-                    'កាមេរ៉ាត្រូវបានបិទ។ សូមអនុញ្ញាតកាមេរ៉ា ឬជ្រើសរូបភាពបាកូដខាងក្រោម។',
-                  )
-                : tr('Allow camera access to scan products.', 'សូមអនុញ្ញាតកាមេរ៉ាដើម្បីស្កេនទំនិញ។')}
-            </Text>
-            <Btn
-              onPress={() => {
-                setCameraReady(false);
-                setCameraError('');
-                requestPermission().catch((e) =>
-                  setCameraError(String(e?.message || e || 'Camera permission denied')),
-                );
-              }}
-            >
-              {tr('Allow camera', 'អនុញ្ញាតកាមេរ៉ា')}
-            </Btn>
-
-            {!cameraReady && Platform.OS !== 'web' && (
-              <View style={{ marginTop: 10 }}>
-                <Btn
-                  onPress={() => {
-                    setCameraReady(false);
-                    setCameraError('');
-                    requestPermission();
-                  }}
-                  style={{ marginBottom: 6 }}
-                >
-                  {tr('Tap to resume camera', 'ចុចដើម្បីបន្តកាមេរ៉ា')}
-                </Btn>
-              </View>
-            )}
-            {Platform.OS === 'web' && (
-              <Btn soft icon={ImagePlus} onPress={() => void scanFromImage()}>
-                {tr('Scan from photo / image instead', 'ស្កេនពីរូបភាពជំនួសវិញ')}
-              </Btn>
-            )}
-          </View>
-        )}
+        <View style={{marginHorizontal:16,marginTop:12}}>
+          <ScannerViewport ref={cameraRef} allowed={!!permission?.granted} ready={cameraReady} onAllow={()=>void requestPermission()} onSize={size=>{cameraLayout.current=size;}} active={visible} facing="back" autofocus="on" zoom={zoomValue} enableTorch={torch} barcodeScannerSettings={{barcodeTypes:ALL_BARCODE_TYPES}}
+            onBarcodeScanned={(e:any)=>{if(photoBusy.current)return;if(!isInsideScannerFrame(e.bounds,cameraLayout.current,isCheckout)){pendingRead.current.n=0;return;}cameraRead(e.data,e.type);}}
+            onCameraReady={()=>{setCameraReady(true);setCameraError('');}} onMountError={e=>{setCameraReady(false);setCameraError(e.message);}}
+            torchOn={torch} zoomLabel={zoomText} photoBusy={photoLoading} onTorch={()=>setTorch(v=>!v)} onZoom={()=>setZoomLevel(z=>((z+1)%3) as 0|1|2)} onImage={()=>void scanFromImage()}
+            feedback={<Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill,screenFlashStyle]}/>}/>
+          {!!cameraError && <Text style={{color:'#FBBF24',fontSize:12,marginTop:8}}>{cameraError}</Text>}
+        </View>
 
         {/* Mode-specific Bottom Controls */}
         {isSearch ? (
@@ -1386,6 +1118,9 @@ export function CameraScanner({
             </View>
           </>
         )}
+        <View style={{flexDirection:'row',justifyContent:'center',alignItems:'center',paddingVertical:10,paddingBottom:28,backgroundColor:theme.surface,borderTopWidth:1,borderColor:theme.border}}>
+          <ScannerCaptureButton busy={photoLoading} onPress={()=>void capturePhoto()} />
+        </View>
       </Animated.View>
     </Modal>
   );

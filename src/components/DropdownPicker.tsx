@@ -178,11 +178,11 @@ export function DropdownPicker({
             </View>
 
             {/* Search Input if more than 5 options */}
-            {uniqueOptions.length > 5 && (
+            {(allowCustom || uniqueOptions.length > 5) && (
               <View style={{ marginBottom: 12 }}>
                 <Field
                   icon={Search}
-                  placeholder={tr('Search options…', 'ស្វែងរក…')}
+                  placeholder={allowCustom ? tr('Type a new value or search…', 'វាយតម្លៃថ្មី ឬស្វែងរក…') : tr('Search options…', 'ស្វែងរក…')}
                   value={search}
                   onChangeText={setSearch}
                 />
@@ -193,7 +193,7 @@ export function DropdownPicker({
               {filtered.length === 0 ? (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                   <Text style={{ color: C.muted, fontSize: 13.5 }}>
-                    {tr('No matching options', 'គ្មានជម្រើសត្រូវគ្នា')}
+                    {allowCustom && !q ? tr('Type a name above, then select Use to add it.', 'វាយឈ្មោះខាងលើ រួចចុចប្រើ ដើម្បីបន្ថែម។') : tr('No matching options', 'គ្មានជម្រើសត្រូវគ្នា')}
                   </Text>
                   {allowCustom && q ? (
                     <Press

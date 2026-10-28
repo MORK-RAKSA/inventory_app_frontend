@@ -1,3 +1,4 @@
+import { StockUnitInput } from '../src/components/StockUnitInput';
 import { isLocalImage, uploadProductImage } from '../src/productImageUpload';
 import { AppText as Text } from '../src/components/AppText';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -55,7 +56,8 @@ export default function ProductFormScreen() {
   const router = useRouter();
   const { tr, t } = useLanguage();
   const toast = useToast();
-  const params = useLocalSearchParams<{ id?: string; barcode?: string }>();
+  const params = useLocalSearchParams<{ id?: string; barcode?: string; scan?: string }>();
+  useEffect(()=>{if(params.scan === '1') setCameraActive(true);},[params.scan]);
   const isEditing = Boolean(params.id);
 
   const { products, rate, refresh } = useLiveData('products');
@@ -733,10 +735,10 @@ export default function ProductFormScreen() {
                   {tr('Packaging UOM Template', 'ជ្រើសរើសទម្រង់ UOM')}
                 </Text>
                 <View style={styles.packagingPresetsRow}>
-                  {uomTemplates.map((p) => {
+                  {uomTemplates.filter(p=>!baseUnit || p.baseUnit.toLowerCase()===baseUnit.toLowerCase()).map((p) => {
                     const isSelected =
                       caseUnitName.toLowerCase() === p.caseUnitName.toLowerCase() &&
-                      caseQty === String(p.caseQty);
+                      caseQty === String(p.caseQty) && baseUnit.toLowerCase() === p.baseUnit.toLowerCase();
                     return (
                       <Press
                         key={p.id}
@@ -769,7 +771,7 @@ export default function ProductFormScreen() {
                   label={tr('Base Unit (from Config)', 'ឯកតារាយ (កំណត់ក្នុង Config)')}
                   value={baseUnit}
                   options={availableBaseUnits}
-                  onChange={setBaseUnit}
+                  onChange={unit=>{setBaseUnit(unit);setCaseUnitName('');setCaseQty('');}}
                   placeholder={tr('Select Base Unit…', 'ជ្រើសរើសឯកតារាយ…')}
                   allowCustom
                 />
@@ -818,14 +820,7 @@ export default function ProductFormScreen() {
 
             <View style={styles.twoColumnRow}>
               <View style={{ flex: 1 }}>
-                <Field
-                  label={tr('Stock Qty', 'ចំនួនក្នុងស្តុក')}
-                  value={stock}
-                  onChangeText={setStock}
-                  placeholder="10"
-                  keyboardType="number-pad"
-                  icon={Package}
-                />
+                <View style={{flex:1}}><Text style={{fontSize:12,color:'#64748B',marginBottom:6}}>Stock quantity</Text><StockUnitInput currentStock={isEditing ? products.find(p=>p.id===params.id)?.stock : undefined} value={stock} onChange={setStock} templates={uomTemplates} baseUnit={baseUnit} baseUnits={availableBaseUnits} onBaseUnitChange={unit=>{setBaseUnit(unit);setCaseUnitName('');setCaseQty('');}} onTemplateChange={t=>{setBaseUnit(t.baseUnit);setCaseUnitName(t.caseUnitName);setCaseQty(String(t.caseQty));}}/></View>
               </View>
               <View style={{ flex: 1 }}>
                 <Field

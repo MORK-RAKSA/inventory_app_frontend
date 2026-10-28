@@ -1,3 +1,6 @@
+import { ScannerViewport, scannerFrame } from './ScannerViewport';
+import { ScannerControls, ScannerCaptureButton } from './ScannerControls';
+import { captureBarcode, decodeNativePhoto, photoScanningAvailable } from '../scannerPhoto';
 import { AppTextInput as TextInput, AppText as Text } from './AppText';
 import { insideFrame, confirmRead } from '../scannerAcceptance';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -169,7 +172,7 @@ function isInsideGunFrame(
   layout: { width: number; height: number }
 ): boolean {
   if (!layout.width || !layout.height) return false;
-  return insideFrame(bounds, { x: 26, y: 34, width: layout.width - 52, height: 164 });
+  return insideFrame(bounds, scannerFrame(layout.width));
 }
 
 export function MobileScannerGunModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -196,8 +199,11 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
   const [permission, requestPermission] = useCameraPermissions({ get: false });
   const [mode, setMode] = useState<ScannerGunMode>('checkout');
   const [torch, setTorch] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState<0 | 1 | 2>(1);
+  const [zoomLevel, setZoomLevel] = useState<0 | 1 | 2>(0);
   const [manualCode, setManualCode] = useState('');
+  const cameraRef = useRef<CameraView>(null);
+  const photoBusy = useRef(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
@@ -380,6 +386,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
    * symbologies still require two matching frames before they are beamed.
    */
   function handleBarcodeScanned(result: { data?: string; type?: string; bounds?: any }) {
+    if (photoBusy.current) return;
     if (!isInsideGunFrame(result?.bounds, gunCameraLayout.current)) { pendingRead.current.n = 0; return; }
     const raw = (result?.data || '').trim();
     if (!raw) return;
@@ -391,7 +398,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
     const now = Date.now();
     if (isDuplicateScan(latch.current, code, now, 800)) return;
 
-    if (!confirmRead(pendingRead.current, code, now)) return;
+    if (!validation.checksumVerified && !confirmRead(pendingRead.current, code, now)) return;
     rememberScan(latch.current, code, now);
     void handleCode(code);
   }
@@ -405,7 +412,20 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
     void handleCode(validation.ok ? validation.code : raw, { skipLatch: true });
   }
 
+  async function capturePhoto() {
+    if (!photoScanningAvailable()) return;
+    if (photoBusy.current || !cameraReady) return;
+    if (!cameraRef.current) return;
+    photoBusy.current=true;setPhotoLoading(true);
+    try {
+      const layout=gunCameraLayout.current;
+      const code=await captureBarcode(cameraRef.current,layout,scannerFrame(layout.width));
+      if(code) { await handleCode(code, {skipLatch:true}); } else { playFail(); pulse('fail'); setPickNotice('No barcode found in frame. Hold steady and try again.'); }
+    } catch { playFail(); pulse('fail'); setPickNotice('No barcode found in frame. Hold steady and try again.'); } finally {photoBusy.current=false;setPhotoLoading(false);}
+  }
+
   async function pickImage() {
+    if (!photoScanningAvailable()) return;
     setPickNotice('');
     setCapturing(true);
     try {
@@ -415,16 +435,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
       });
       const uri = result.canceled ? null : result.assets?.[0]?.uri;
       if (!uri) return;
-      if (Platform.OS !== 'web') {
-        setPickNotice(
-          tr(
-            'Photo decoding needs the camera feed on this device — point the scanner at the barcode.',
-            'ការអានពីរូបភាពត្រូវការកាមេរ៉ាផ្ទាល់ — សូមដាក់កាមេរ៉ាលើបាកូដ។'
-          )
-        );
-        return;
-      }
-      const detected = await decodeBarcodeFromImageUri(uri);
+      const detected = Platform.OS === 'web' ? await decodeBarcodeFromImageUri(uri) : await decodeNativePhoto(uri);
       if (!detected) {
         playFail();
         setPickNotice(tr('No barcode found in that photo.', 'រកមិនឃើញបាកូដក្នុងរូបភាពនេះទេ។'));
@@ -548,207 +559,10 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
 
       {/* ── Viewfinder ─────────────────────────────────────────── */}
       <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-        <View
-          onLayout={(e) => {
-            const { width, height } = e.nativeEvent.layout;
-            gunCameraLayout.current = { width, height };
-          }}
-          style={{ height: 232, borderRadius: 24, overflow: 'hidden', backgroundColor: '#000' }}
-        >
-          {permission?.granted ? (
-            <CameraView
-              active
-              style={StyleSheet.absoluteFill}
-              facing="back"
-              autofocus="on"
-              zoom={zoomValue}
-              enableTorch={canTorch && torch}
-              barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES }}
-              onBarcodeScanned={handleBarcodeScanned}
-              onCameraReady={() => {
-                setCameraReady(true);
-                setCameraError('');
-              }}
-              onMountError={(e) => {
-                setCameraReady(false);
-                setCameraError(e.message || 'Camera unavailable');
-              }}
-            />
-          ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 22, gap: 12 }}>
-              <CameraOff size={26} color={G.muted} />
-              <Text style={{ color: G.text, fontSize: 13, textAlign: 'center' }}>
-                {cameraError ||
-                  tr('Camera permission is required for the scanner gun.', 'ត្រូវការសិទ្ធិប្រើកាមេរ៉ាដើម្បីស្កេន។')}
-              </Text>
-              <Press
-                onPress={() => void requestPermission().catch(() => {})}
-                style={{ backgroundColor: C.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
-                  {tr('Allow camera', 'អនុញ្ញាតកាមេរ៉ា')}
-                </Text>
-              </Press>
-            </View>
-          )}
-
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, screenFeedback]} />
-          {/* Aiming frame + laser */}
-          {permission?.granted ? (
-            <>
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  {
-                    position: 'absolute',
-                    top: 34,
-                    left: 26,
-                    right: 26,
-                    height: 164,
-                    borderRadius: 18,
-                    borderWidth: 2,
-                    overflow: 'hidden',
-                  },
-                  frameStyle,
-                ]}
-              >
-                <Animated.View
-                  style={[
-                    {
-                      position: 'absolute',
-                      left: 8,
-                      right: 8,
-                      height: 2,
-                      borderRadius: 2,
-                      backgroundColor: activeMode.accent,
-                      shadowColor: activeMode.accent,
-                      shadowOpacity: 0.9,
-                      shadowRadius: 8,
-                    },
-                    laserStyle,
-                  ]}
-                />
-                {/* Corner brackets */}
-                {[
-                  { top: 6, left: 6, borderTopWidth: 3, borderLeftWidth: 3 },
-                  { top: 6, right: 6, borderTopWidth: 3, borderRightWidth: 3 },
-                  { bottom: 6, left: 6, borderBottomWidth: 3, borderLeftWidth: 3 },
-                  { bottom: 6, right: 6, borderBottomWidth: 3, borderRightWidth: 3 },
-                ].map((corner, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      { position: 'absolute', width: 22, height: 22, borderColor: activeMode.accent, opacity: 0.9 },
-                      corner,
-                    ]}
-                  />
-                ))}
-                {!cameraReady ? (
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ color: G.warn, fontSize: 12, fontWeight: '800' }}>
-                      {tr('Starting camera…', 'កំពុងបើកកាមេរ៉ា…')}
-                    </Text>
-                  </View>
-                ) : null}
-              </Animated.View>
-
-              {/* Top badges */}
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  left: 14,
-                  right: 14,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 5,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    paddingHorizontal: 9,
-                    paddingVertical: 4,
-                    borderRadius: 999,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 3,
-                      backgroundColor: cameraReady ? G.success : G.warn,
-                    }}
-                  />
-                  <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.4 }}>
-                    {cameraReady ? 'LIVE' : 'PAUSED'}
-                  </Text>
-                </View>
-                {torch ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      backgroundColor: 'rgba(251,191,36,0.9)',
-                      paddingHorizontal: 9,
-                      paddingVertical: 4,
-                      borderRadius: 999,
-                    }}
-                  >
-                    <Flashlight size={11} color="#0A0E1A" />
-                    <Text style={{ color: '#0A0E1A', fontSize: 10, fontWeight: '900' }}>TORCH</Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Floating controls */}
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: 10,
-                  left: 12,
-                  right: 12,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Press
-                  onPress={toggleTorch}
-                  accessibilityLabel={torch ? 'Turn flashlight off' : 'Turn flashlight on'}
-                  style={[
-                    roundControl,
-                    torch && { backgroundColor: G.warn },
-                  ]}
-                >
-                  {torch ? (
-                    <FlashlightOff size={16} color="#0A0E1A" />
-                  ) : (
-                    <Flashlight size={16} color={canTorch ? '#FFFFFF' : G.danger} />
-                  )}
-                </Press>
-
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <Press
-                    onPress={() => setZoomLevel((z) => ((z + 1) % 3) as 0 | 1 | 2)}
-                    accessibilityLabel="Change camera zoom"
-                    style={[roundControl, { paddingHorizontal: 12 }]}
-                  >
-                    <ZoomIn size={14} color="#FFFFFF" />
-                    <Text style={{ color: '#FFFFFF', fontSize: 11.5, fontWeight: '800' }}>{zoomText}</Text>
-                  </Press>
-                  <Press onPress={() => void pickImage()} accessibilityLabel="Scan from photo" style={roundControl}>
-                    <ImagePlus size={15} color="#FFFFFF" />
-                  </Press>
-                </View>
-              </View>
-            </>
-          ) : null}
-        </View>
+        <ScannerViewport ref={cameraRef} allowed={!!permission?.granted} ready={cameraReady} onAllow={()=>void requestPermission()} onSize={size=>{gunCameraLayout.current=size;}} active facing="back" autofocus="on" zoom={zoomValue} enableTorch={canTorch && torch} barcodeScannerSettings={{barcodeTypes:BARCODE_TYPES}} onBarcodeScanned={handleBarcodeScanned}
+          onCameraReady={()=>{setCameraReady(true);setCameraError('');}} onMountError={e=>{setCameraReady(false);setCameraError(e.message);}}
+          torchOn={torch} zoomLabel={zoomText} photoBusy={photoLoading || capturing} onTorch={toggleTorch} onZoom={()=>setZoomLevel(z=>((z+1)%3) as 0|1|2)} onImage={()=>void pickImage()}
+          feedback={<Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill,screenFeedback]}/>}/>
 
         {cameraError && permission?.granted ? (
           <Text style={{ color: G.warn, fontSize: 11.5, marginTop: 8 }}>{cameraError}</Text>
@@ -1062,10 +876,12 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
             paddingHorizontal: 8,
           }}
         >
-          {MODES.map((m) => {
+          {MODES.map((m, index) => {
             const selected = mode === m.key;
             const Icon = m.icon;
             return (
+              <React.Fragment key={m.key}>
+              {index === 2 && <View style={{flex:1,alignItems:'center'}}><ScannerCaptureButton busy={photoLoading || capturing} onPress={()=>void capturePhoto()} /></View>}
               <Press
                 key={m.key}
                 onPress={() => switchMode(m.key)}
@@ -1103,6 +919,7 @@ function ScannerGunBody({ onClose }: { onClose: () => void }) {
                   {tr(m.labelEn, m.labelKh)}
                 </Text>
               </Press>
+              </React.Fragment>
             );
           })}
         </View>

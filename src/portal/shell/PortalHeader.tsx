@@ -1,3 +1,4 @@
+import { PortalFullscreen } from './PortalFullscreen';
 import { AppText as Text } from '../../components/AppText';
 import { View } from 'react-native';
 import { Barcode, Layers, Plus, RefreshCw } from 'lucide-react-native';
@@ -37,12 +38,12 @@ export function PortalHeader({ portal }: { portal: PortalController }) {
   return (
     <View
       style={{
-        minHeight: isCompact ? 74 : 84,
+        minHeight: isCompact ? 66 : 70,
         backgroundColor: 'rgba(255, 255, 255, 0.35)',
         borderBottomWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.7)',
-        paddingHorizontal: isCompact ? 18 : 26,
-        paddingVertical: isCompact ? 12 : 16,
+        paddingHorizontal: isCompact ? 14 : 18,
+        paddingVertical: isCompact ? 10 : 12,
         flexDirection: 'row',
         flexWrap: 'wrap',
         alignItems: 'center',
@@ -81,6 +82,7 @@ export function PortalHeader({ portal }: { portal: PortalController }) {
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <PortalFullscreen />
         {/* Hardware barcode scanner pill */}
         <View
           style={{

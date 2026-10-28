@@ -1,3 +1,5 @@
+import { ProductImage } from '../../components/ProductImage';
+import { isProductExpired } from '../../productExpiry';
 import { AppText as Text } from '../../components/AppText';
 import { View } from 'react-native';
 import { Edit3, Trash2 } from 'lucide-react-native';
@@ -20,6 +22,7 @@ export function InventoryRow({
   onEdit: (product: Product) => void;
   onArchive: (product: Product) => void;
 }) {
+  const expired = isProductExpired(product);
   const isLow = product.stock <= product.lowStockThreshold;
 
   return (
@@ -33,13 +36,16 @@ export function InventoryRow({
         borderColor: P.border,
       }}
     >
-      <View style={{ flex: INV_COL.product }}>
-        <Text style={{ color: P.text, fontWeight: '700', fontSize: 14 }}>{product.name}</Text>
-        <Text style={{ color: P.muted, fontSize: 11.5, marginTop: 2 }}>
+      <View style={{ flex: INV_COL.product, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <ProductImage id={product.id} name={product.name} uri={product.imageUrl || undefined} barcode={product.barcode} size={52} />
+        <View style={{flex:1}}>
+        <Text style={{ color: expired ? P.rose : P.text, fontWeight: '700', fontSize: 14 }}>{product.name}</Text>
+        {expired && <View style={{alignSelf:'flex-start',backgroundColor:P.roseLight,paddingHorizontal:8,paddingVertical:3,borderRadius:6,marginTop:5}}><Text style={{color:P.rose,fontSize:11}}>ផុតកំណត់ · Expired</Text></View>}
+        <Text selectable style={{ color: P.muted, fontSize: 11.5, marginTop: 2 }}>
           {product.barcode ? `SKU: ${product.barcode}` : 'No Barcode'}
           {product.expirationDate ? ` · Exp: ${product.expirationDate}` : ''}
         </Text>
-      </View>
+      </View></View>
 
       <View style={{ flex: INV_COL.category }}>
         <View

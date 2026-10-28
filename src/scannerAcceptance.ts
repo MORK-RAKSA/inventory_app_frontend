@@ -13,7 +13,7 @@ export function confirmRead(state: { code: string; n: number; at: number }, code
     state.code = code; state.n = 1; state.at = now;
     return false;
   }
-  if (now - state.at < 80) return false;
+  if (now - state.at < 35) return false;
   state.at = now;
-  return ++state.n >= 3;
+  return ++state.n >= 2;
 }

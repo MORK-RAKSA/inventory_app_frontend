@@ -59,7 +59,7 @@ export function usePortalController() {
   // Inventory state
   const [invSearch, setInvSearch] = useState('');
   const [invCat, setInvCat] = useState('All');
-  const [invStatusFilter, setInvStatusFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [invStatusFilter, setInvStatusFilter] = useState<'all' | 'low' | 'out' | 'expired'>('all');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showProductModal, setShowProductModal] = useState(false);
 
@@ -127,6 +127,22 @@ export function usePortalController() {
 
   // Sales filter state
   const [salesRange, setSalesRange] = useState<'today' | '7d' | '30d' | 'all'>('all');
+  const [salesFrom, setSalesFrom] = useState('');
+  const [salesTo, setSalesTo] = useState('');
+  const [rangeSales, setRangeSales] = useState<Sale[]>([]);
+  const [salesDateError, setSalesDateError] = useState('');
+  useEffect(() => {
+    if (!salesFrom && !salesTo) { setSalesDateError(''); return; }
+    if (salesFrom && salesTo && salesFrom > salesTo) { setRangeSales([]); setSalesDateError('Start date must be before end date'); return; }
+    let active = true;
+    setSalesDateError('');setRangeSales([]);
+    const query = new URLSearchParams();
+    query.set('from', `${salesFrom || '1970-01-01'}T00:00:00+07:00`);
+    const end = salesTo ? new Date(new Date(`${salesTo}T00:00:00Z`).getTime()+86400000).toISOString().slice(0,10) : new Date(Date.now()+86400000).toISOString().slice(0,10);
+    query.set('to', `${end}T00:00:00+07:00`);
+    void api<Sale[]>(`/sales?${query}`).then(result=>{if(active)setRangeSales(result);}).catch(()=>{if(active)setSalesDateError('Could not load sales for this date range');});
+    return ()=>{active=false;};
+  }, [salesFrom, salesTo]);
   const [salesSearch, setSalesSearch] = useState('');
 
   // Settings state
@@ -1134,6 +1150,7 @@ export function usePortalController() {
     return products.filter((p) => {
       if (invCat !== 'All' && p.category !== invCat) return false;
       if (invStatusFilter === 'low' && p.stock > p.lowStockThreshold) return false;
+      if (invStatusFilter === 'expired' && !isProductExpired(p)) return false;
       if (invStatusFilter === 'out' && p.stock > 0) return false;
       if (!q) return true;
       return (
@@ -1167,20 +1184,20 @@ export function usePortalController() {
   const filteredSales = useMemo(() => {
     const now = Date.now();
     const q = salesSearch.trim().toLowerCase();
-    return activeSales.filter((s) => {
+    return (salesFrom || salesTo ? rangeSales.filter(s=>s.status !== 'ARCHIVED') : activeSales).filter((s) => {
       const t = new Date(s.createdAt).getTime();
-      if (salesRange === 'today' && new Date(s.createdAt).toDateString() !== new Date().toDateString()) {
+      if (!salesFrom && !salesTo && salesRange === 'today' && new Date(s.createdAt).toDateString() !== new Date().toDateString()) {
         return false;
       }
-      if (salesRange === '7d' && now - t > 7 * 86400000) return false;
-      if (salesRange === '30d' && now - t > 30 * 86400000) return false;
+      if (!salesFrom && !salesTo && salesRange === '7d' && now - t > 7 * 86400000) return false;
+      if (!salesFrom && !salesTo && salesRange === '30d' && now - t > 30 * 86400000) return false;
       if (!q) return true;
       return (
         s.id.toLowerCase().includes(q) ||
         s.items.some((i) => i.productName.toLowerCase().includes(q))
       );
     });
-  }, [activeSales, salesRange, salesSearch]);
+  }, [activeSales, salesRange, salesSearch, salesFrom, salesTo, rangeSales]);
 
   // Retail Cart helpers
   const cartLines = useMemo(() => {
@@ -1779,6 +1796,7 @@ export function usePortalController() {
     salesRange,
     setSalesRange,
     salesSearch,
+    salesFrom, salesTo, setSalesFrom, setSalesTo, salesDateError,
     setSalesSearch,
     rateInput,
     setRateInput,

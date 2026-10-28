@@ -52,12 +52,12 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
     <View style={{ flex: 1, minHeight: 0, height: Platform.OS === 'web' ? '100dvh' as any : undefined, backgroundColor: P.canvas }}>
       <Aurora />
 
-      <View style={{ flex: 1, padding: isCompact ? 0 : 16 }}>
+      <View style={{ flex: 1, padding: isCompact ? 0 : 6 }}>
         <View
           style={{
             flex: 1,
             flexDirection: isCompact ? 'column' : 'row',
-            borderRadius: isCompact ? 0 : 28,
+            borderRadius: isCompact ? 0 : 16,
             overflow: 'hidden',
             backgroundColor: 'rgba(255, 255, 255, 0.3)',
             borderWidth: isCompact ? 0 : 1,
@@ -77,12 +77,14 @@ export function WebPortal({ onSwitchToMobile }: { onSwitchToMobile: () => void }
                   Loading គ្រប់គ្រងហាង · EasySell Portal...
                 </Text>
               </View>
+            ) : tab === 'pos' && !isCompact ? (
+              <View style={{flex:1,minHeight:0,padding:12}}><PosTab portal={portal}/></View>
             ) : (
               <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{
-                  padding: isCompact ? 18 : 26,
-                  paddingBottom: 60,
+                  padding: isCompact ? 14 : 16,
+                  paddingBottom: 24,
                   gap: 18,
                 }}
                 showsVerticalScrollIndicator={false}

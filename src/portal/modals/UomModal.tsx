@@ -1,3 +1,4 @@
+import { UnitSelect } from '../../components/UnitSelect';
 import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
 import { DropdownPicker } from '../../components/DropdownPicker';
 import { Modal, Platform, View } from 'react-native';
@@ -108,66 +109,16 @@ export function UomModal({ portal }: { portal: PortalController }) {
                 <Text style={{ color: P.textSub, fontSize: 11.5, fontWeight: '700', marginBottom: 4 }}>
                   {tr('BASE UNIT (SINGLE)', 'ឯកតារាយ')}
                 </Text>
-                {Platform.OS === 'web' ? (
-                  <View
-                    style={{
-                      borderWidth: 1,
-                      borderColor: P.borderStrong,
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      backgroundColor: P.surfaceAlt,
-                      height: 40,
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <select
-                      value={uomFormBaseUnit || 'Piece'}
-                      onChange={(e: any) => setUomFormBaseUnit(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        outline: 'none',
-                        color: P.text,
-                        padding: '0 10px',
-                        fontSize: 13,
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {baseUnitOptions.map((u) => (
-                        <option key={u} value={u} style={{ background: P.surface, color: P.text }}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
-                  </View>
-                ) : (
-                  <TextInput
-                    value={uomFormBaseUnit}
-                    onChangeText={setUomFormBaseUnit}
-                    placeholder="Can / Bottle / Piece / Box / Pack"
-                    placeholderTextColor="#9CA3AF"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: P.borderStrong,
-                      borderRadius: 8,
-                      paddingHorizontal: 12,
-                      height: 40,
-                      color: P.text,
-                      backgroundColor: P.surfaceAlt,
-                    }}
-                  />
-                )}
+                <UnitSelect value={uomFormBaseUnit} options={baseUnitOptions as string[]} onChange={setUomFormBaseUnit} placeholder={tr('Select base unit', 'ជ្រើសរើសឯកតារាយ')} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: P.textSub, fontSize: 11.5, fontWeight: '700', marginBottom: 4 }}>
                   {tr('MASTER PACKAGING', 'ឯកតាដុំធំ')}
                 </Text>
-                <DropdownPicker value={uomFormCaseUnitName} options={packagingOptions as string[]}
-                  onChange={setUomFormCaseUnitName} allowCustom
+                <UnitSelect value={uomFormCaseUnitName} options={Array.from(new Set([...baseUnitOptions, ...packagingOptions])) as string[]}
+                  onChange={setUomFormCaseUnitName}
                   placeholder={tr('Select or add packaging', 'ជ្រើសរើស ឬបន្ថែមឯកតាដុំធំ')} />
+                <Text style={{fontSize:11,color:P.muted,marginTop:6}}>{tr('Enter your packaging name, e.g. Box, Case or Carton. Save this UOM to reuse it.', 'បញ្ចូលឈ្មោះដូចជា ប្រអប់ កេស ឬកញ្ចប់ រួចរក្សាទុក UOM ដើម្បីប្រើឡើងវិញ។')}</Text>
               </View>
             </View>
 

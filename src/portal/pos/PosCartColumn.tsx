@@ -107,6 +107,9 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
     <View
       style={{
         flexGrow: 1,
+        flex: isCompact ? undefined : 1,
+        minHeight: 0,
+        height: isCompact ? undefined : '100%',
         width: '100%',
         backgroundColor: P.surface,
         borderRadius: 16,
@@ -115,8 +118,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
         borderColor: P.border,
         ...(Platform.OS === 'web'
           ? {
-              position: 'sticky' as any,
-              top: 20,
+              overflow: 'hidden',
 
               display: 'flex' as any,
               flexDirection: 'column',
@@ -127,6 +129,8 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
       {/* ────────────────── FIXED TOP SECTION ────────────────── */}
       <View
         style={{
+          flexShrink: 0,
+          ...(Platform.OS === 'web' && !isCompact ? {maxHeight: '65%', overflowY: 'auto'} as any : {}),
           borderBottomWidth: 1,
           borderColor: P.border,
           paddingBottom: 14,
@@ -405,7 +409,7 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
       <View
         style={{
           flex: 1,
-          minHeight: 180,
+          minHeight: isCompact ? 180 : 0,
           ...(Platform.OS === 'web' ? ({ overflowY: 'auto' } as any) : {}),
         }}
       >
@@ -440,6 +444,8 @@ export function PosCartColumn({ portal }: { portal: PortalController }) {
           onPress={() => void handleExecuteCheckout()}
           style={{
             height: 48,
+            flexShrink: 0,
+            marginTop: 10,
             borderRadius: 12,
             backgroundColor:
               lineCount > 0 && hasTender && isPaidEnough ? '#47645A' : P.borderStrong,

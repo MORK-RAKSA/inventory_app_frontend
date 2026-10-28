@@ -8,10 +8,11 @@ export const INV_COL = {
   actions: 0.9,
 };
 
-export type StockFilter = 'all' | 'low' | 'out';
+export type StockFilter = 'all' | 'low' | 'out' | 'expired';
 
 export const STOCK_FILTERS: { id: StockFilter; label: string }[] = [
   { id: 'all', label: 'All Stock' },
   { id: 'low', label: 'Low Stock' },
   { id: 'out', label: 'Out of Stock' },
+  { id: 'expired', label: 'Expired · ផុតកំណត់' },
 ];

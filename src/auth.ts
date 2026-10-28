@@ -169,25 +169,12 @@ async function request(path: string, body: object) {
   let r: Response;
   try {
     r = await apiFetch(path, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  } catch (err) {
-    const altPath = path.startsWith("/auth/") ? path.replace("/auth/", "/") : path;
-    if (altPath !== path) {
-      r = await apiFetch(altPath, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-    } else {
-      throw err;
-    }
+  } catch {
+    throw new Error('Cannot reach the authentication server. Check your connection and the deployed API configuration.');
   }
 
   if (!r.ok) {

@@ -1,3 +1,4 @@
+import { StockUnitInput } from '../../components/StockUnitInput';
 import { AppTextInput as TextInput, AppText as Text } from '../../components/AppText';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, Platform, View } from 'react-native';
@@ -582,47 +583,8 @@ export function ProductFormPage({ portal }: { portal: PortalController }) {
                 <Text style={{ color: P.textSub, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>
                   {editingProduct ? tr('CURRENT STOCK', 'ចំនួនស្តុកបច្ចុប្បន្ន') : tr('INITIAL STOCK', 'ចំនួនស្តុកដំបូង')}
                 </Text>
-                <TextInput
-                  value={formStock}
-                  onChangeText={setFormStock}
-                  placeholder="0"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: P.borderStrong,
-                    borderRadius: 10,
-                    paddingHorizontal: 12,
-                    height: 42,
-                    color: P.text,
-                    backgroundColor: P.surfaceAlt,
-                  }}
-                />
-                {Boolean(editingProduct) && (
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                    {[5, 10, 50, 100].map((delta) => (
-                      <Press
-                        key={delta}
-                        onPress={() => {
-                          const current = Number(formStock) || 0;
-                          setFormStock(String(Math.max(0, current + delta)));
-                        }}
-                        style={{
-                          backgroundColor: P.primaryLight,
-                          borderWidth: 1,
-                          borderColor: P.border,
-                          paddingHorizontal: 9,
-                          paddingVertical: 5,
-                          borderRadius: 7,
-                        }}
-                      >
-                        <Text style={{ color: P.primary, fontSize: 11.5, fontWeight: '800' }}>
-                          +{delta}
-                        </Text>
-                      </Press>
-                    ))}
-                  </View>
-                )}
+                <StockUnitInput currentStock={editingProduct?.stock} value={formStock} onChange={setFormStock} templates={portal.uomConfigs} baseUnit={formBaseUnit} baseUnits={portal.availableBaseUnits} onBaseUnitChange={setFormBaseUnit} onTemplateChange={t=>{setFormBaseUnit(t.baseUnit);setFormCaseUnitName(t.caseUnitName);setFormCaseQty(String(t.caseQty));}} />
+
               </View>
 
               <View style={{ flex: 1 }}>
