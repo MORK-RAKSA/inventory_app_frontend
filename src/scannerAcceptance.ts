@@ -9,11 +9,11 @@ export function insideFrame(bounds: ScanBounds | undefined, frame: { x: number; 
     && x + width <= frame.x + frame.width && y + height <= frame.y + frame.height;
 }
 export function confirmRead(state: { code: string; n: number; at: number }, code: string, now: number): boolean {
-  if (state.code !== code || now - state.at > 600) {
+  if (state.code !== code || now - state.at > 450) {
     state.code = code; state.n = 1; state.at = now;
     return false;
   }
-  if (now - state.at < 35) return false;
+  if (now - state.at < 60) return false;
   state.at = now;
   return ++state.n >= 2;
 }

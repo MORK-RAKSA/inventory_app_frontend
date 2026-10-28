@@ -1,6 +1,6 @@
 import { AppTextInput as TextInput, AppText as Text } from './components/AppText';
 import React,{useId,useState} from 'react';
-import {KeyboardAvoidingView,KeyboardTypeOptions,Platform,ScrollView,StyleProp,StyleSheet,View,ViewStyle,ActivityIndicator,RefreshControl} from 'react-native';
+import {KeyboardAvoidingView,KeyboardTypeOptions,Platform,ScrollView,StyleProp,StyleSheet,View,ViewStyle,ActivityIndicator,RefreshControl,useWindowDimensions} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Animated,{interpolate,interpolateColor,useAnimatedStyle,useSharedValue,withTiming} from 'react-native-reanimated';
 import Svg,{Circle,Defs,LinearGradient,Rect,Stop} from 'react-native-svg';
@@ -16,6 +16,7 @@ type IconType = React.ComponentType<{size?:number;color?:string;strokeWidth?:num
 export function Screen({title,subtitle,children,right,onBack,tabs = true,onRefresh,refreshing = false}:{
   title:string;subtitle?:string;children:React.ReactNode;right?:React.ReactNode;onBack?:()=>void;tabs?:boolean;onRefresh?:()=>void|Promise<void>;refreshing?:boolean;
 }) {
+  const {width:screenWidth}=useWindowDimensions();
   const [pulling,setPulling] = useState(false);
   const pull = async () => {if (!onRefresh) return;setPulling(true);try{await onRefresh();}finally{setPulling(false);}};
   return (
@@ -29,7 +30,7 @@ export function Screen({title,subtitle,children,right,onBack,tabs = true,onRefre
           automaticallyAdjustKeyboardInsets={true}
           refreshControl={onRefresh ? <RefreshControl refreshing={refreshing || pulling} onRefresh={pull} tintColor={C.primary} colors={[C.primary]} /> : undefined}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{paddingHorizontal: 20, paddingTop: 22, paddingBottom: tabs ? 130 : 60}}
+          contentContainerStyle={{paddingHorizontal: screenWidth < 380 ? 12 : 20, paddingTop: 16, paddingBottom: tabs ? 140 : 60}}
         >
           {onBack ? (
             <Rise>

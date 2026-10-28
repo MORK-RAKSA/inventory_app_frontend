@@ -1,3 +1,4 @@
+import { AppUpdateGate } from '../src/components/AppUpdateGate';
 import { AppTextInput as TextInput, AppText as Text } from '../src/components/AppText';
 import {useFonts, NotoSansKhmer_400Regular, NotoSansKhmer_500Medium} from '@expo-google-fonts/noto-sans-khmer';
 import 'react-native-gesture-handler';
@@ -167,9 +168,9 @@ function MinimalField({
 
 export default function Root() {
   const [fontsLoaded, fontsError] = useFonts({ NotoSansKhmer_400Regular, NotoSansKhmer_500Medium });
-  useAppUpdates();
+  const appUpdate = useAppUpdates();
   const { width } = useWindowDimensions();
-  const isDesktopWeb = Platform.OS === 'web' && width >= 900;
+  const isDesktopWeb = Platform.OS === 'web' && width >= 960;
   const [booted, setBooted] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
@@ -183,16 +184,8 @@ export default function Root() {
   const [forgotPin, setForgotPin] = useState('');
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
-  // Default to Portal Website UI on Web desktop/tablet, or allow instant switching on any web screen
-  const [uiMode, setUiMode] = useState<'portal' | 'mobile'>(() =>
-    Platform.OS === 'web' && width >= 768 ? 'portal' : 'mobile'
-  );
-
-  useEffect(() => {
-    if (Platform.OS === 'web' && width >= 768) {
-      setUiMode('portal');
-    }
-  }, [width]);
+  // Derive layout from the current viewport so resizing works in both directions.
+  const uiMode = Platform.OS === 'web' && width >= 960 ? 'portal' : 'mobile';
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -212,6 +205,10 @@ export default function Root() {
         const style = document.createElement('style');
         style.id = styleId;
         style.innerHTML = `
+          html, body { width:100%; height:100%; overflow-x:hidden; }
+          #root { width:100%; height:100dvh; min-height:0; }
+          input, select, textarea { max-width:100%; }
+
           *,
           *::before,
           *::after,
@@ -372,6 +369,7 @@ export default function Root() {
 
     return (
       <GestureHandlerRootView style={{flex: 1, backgroundColor: C.bg}}>
+      <AppUpdateGate update={appUpdate} />
         <StatusBar style="dark" />
         <SafeAreaView style={{flex: 1}}>
           <KeyboardAvoidingView
@@ -683,12 +681,13 @@ export default function Root() {
 
   return (
     <GestureHandlerRootView style={{flex: 1, backgroundColor: C.bg}}>
+      <AppUpdateGate update={appUpdate} />
       <ToastProvider>
         <LanguageProvider>
           <StatusBar style="dark" />
           <LiveAlertWatcher />
           {Platform.OS === 'web' && uiMode === 'portal' ? (
-            <WebPortal onSwitchToMobile={() => setUiMode('mobile')} />
+            <WebPortal onSwitchToMobile={() => {}} />
           ) : (
             <View style={{flex: 1}}>
               <Stack

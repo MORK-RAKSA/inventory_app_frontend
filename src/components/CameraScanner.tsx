@@ -273,7 +273,7 @@ export function CameraScanner({
   /** Validate camera reads, require three stable detections, then apply duplicate suppression. */
   function cameraRead(raw:string,type?:string) {
     if(closingScanner.current || photoBusy.current)return;
-    if(processingRead.current){isDuplicateScan(latch.current,canonicalBarcode(raw),Date.now(),800);return;}
+    if(processingRead.current){isDuplicateScan(latch.current,canonicalBarcode(raw),Date.now(),1200);return;}
     const code=acceptCameraRead(latch.current,pendingRead.current,raw,type,Date.now());
     if(code)void scanned(code);
   }
@@ -360,9 +360,12 @@ export function CameraScanner({
         ctx.drawImage(video, (26 + offsetX) / scale,
           (34 + offsetY) / scale,
           crop.width, crop.height, 0, 0, crop.width, crop.height);
+        const capturedAt = Date.now();
         const results = await detector.detect(crop);
+        if (!active || Date.now() - capturedAt > 350 || video.paused || document.visibilityState !== 'visible') { pendingRead.current = {code:'',n:0,at:0}; return; }
         const value = results?.[0]?.rawValue;
         if (value) cameraRead(String(value), results?.[0]?.format);
+        else pendingRead.current = {code:'',n:0,at:0};
       } catch {
         // Ignore single-frame decode errors
       } finally {
@@ -597,7 +600,7 @@ export function CameraScanner({
 
         <View style={{marginHorizontal:16,marginTop:12}}>
           <ScannerViewport ref={cameraRef} allowed={!!permission?.granted} ready={cameraReady} onAllow={()=>void requestPermission()} onSize={size=>{cameraLayout.current=size;}} active={visible} facing="back" autofocus="on" zoom={zoomValue} enableTorch={torch} barcodeScannerSettings={{barcodeTypes:ALL_BARCODE_TYPES}}
-            onBarcodeScanned={(e:any)=>{if(photoBusy.current)return;if(!isInsideScannerFrame(e.bounds,cameraLayout.current,isCheckout)){pendingRead.current.n=0;return;}cameraRead(e.data,e.type);}}
+            onBarcodeScanned={(e:any)=>{if(Platform.OS === 'web' || photoBusy.current || !visible)return;if(!isInsideScannerFrame(e.bounds,cameraLayout.current,isCheckout)){pendingRead.current.n=0;return;}cameraRead(e.data,e.type);}}
             onCameraReady={()=>{setCameraReady(true);setCameraError('');}} onMountError={e=>{setCameraReady(false);setCameraError(e.message);}}
             torchOn={torch} zoomLabel={zoomText} photoBusy={photoLoading} onTorch={()=>setTorch(v=>!v)} onZoom={()=>setZoomLevel(z=>((z+1)%3) as 0|1|2)} onImage={()=>void scanFromImage()}
             feedback={<Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill,screenFlashStyle]}/>}/>

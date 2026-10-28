@@ -1,7 +1,7 @@
 import { registerDeviceNotifications } from '../../src/deviceNotifications';
 import { AppText as Text } from '../../src/components/AppText';
 import {useEffect,useState,ReactNode} from 'react';
-import {Platform,View,StyleProp,ViewStyle} from 'react-native';
+import {Platform,View,useWindowDimensions,StyleProp,ViewStyle} from 'react-native';
 import {useRouter} from 'expo-router';
 import {ArrowUpRight,Boxes,TrendingUp,Plus,ScanLine,ChartNoAxesCombined,Warehouse,PackageCheck,Layers,AlertTriangle,Clock,PackageX,ChevronRight,Bell} from 'lucide-react-native';
 import {useLiveData} from '../../src/hooks/useLiveData';
@@ -22,6 +22,8 @@ function Soft({index = 0,children,style}:{index?:number;children:ReactNode;style
 }
 
 export default function Dashboard() {
+  const {width:screenWidth} = useWindowDimensions();
+
   const username = getUsername();
   const router = useRouter();
   const {products:ps,sales:ss,rate,error,loading,refresh} = useLiveData('all');
@@ -75,10 +77,10 @@ export default function Dashboard() {
     >
       {/* Quick actions sit right under the greeting so they are one tap away. */}
       <Soft index={1}>
-        <View style={{flexDirection: 'row', gap: 10, marginBottom: 16}}>
+        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16}}>
           {quick.map(x => (
             <Press key={x.to} onPress={() => router.push(x.to as any)} accessibilityLabel={x.label} scale={0.95}
-              style={{flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, backgroundColor: x.solid ? C.primary : C.surface, borderRadius: 18, elevation: 2, shadowColor: '#3B2A7A', shadowOpacity: 0.07, shadowRadius: 8, shadowOffset: {width: 0, height: 3}}}>
+              style={{flexGrow: 1, flexBasis: screenWidth < 380 ? '45%' : '20%', minWidth: 0, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4, backgroundColor: x.solid ? C.primary : C.surface, borderRadius: 18, elevation: 2, shadowColor: '#3B2A7A', shadowOpacity: 0.07, shadowRadius: 8, shadowOffset: {width: 0, height: 3}}}>
               <IconBadge icon={x.Icon} size={40} tone={x.solid ? 'solid' : 'primary'} />
               <Text numberOfLines={2} style={{fontSize: 11.5, fontWeight: '800', color: x.solid ? '#fff' : C.text, textAlign: 'center', marginTop: 8}}>{x.label}</Text>
             </Press>
